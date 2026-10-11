@@ -1,0 +1,271 @@
+datasource db {
+  provider = "sqlite"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum RiskLevel {
+  SAFE
+  LOW_CONCERN
+  HIGH_CONCERN
+  IMMEDIATE_DANGER
+}
+
+enum TonePreference {
+  GENTLE
+  DIRECT
+  ENCOURAGING
+  THOUGHTFUL
+}
+
+// 🟢 افزودن وضعیت‌ها و اولویت‌های تیکت برای سیستم پشتیبانی
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  ANSWERED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model User {
+  isActive Boolean @default(true)
+  id               String         @id @default(cuid())
+  phone            String         @unique
+  email            String?
+  password         String?
+  name             String?
+  role             Role           @default(USER)
+  isAdmin          Boolean        @default(false)
+  
+  tone             String         @default("friendly")
+  theme            String         @default("dark")  
+  
+  // 🟢 سیستم جدید پیام رایگان (۵۰ پیام کل) و قفل موقت زمان‌‌دار
+  messageCount     Int            @default(0)       // تعداد کل پیام‌های ارسالی رایگان
+  lastMessageDate  DateTime       @default(now())
+  
+  // 🟢 مدیریت اشتراک زمانی نامحدود (۱، ۳، ۶ ماهه)
+  isSubscribed         Boolean    @default(false)   // آیا اشتراک نامحدود فعال دارد؟
+  subscriptionExpiresAt DateTime?                  // تاریخ انقضای اشتراک
+  lockUntil            DateTime?                  // اگر ۵۰ پیام تمام شد، تا چه زمانی قفل است (مثلاً ۲ ساعت بعد)
+
+  hasReceivedFirstBonus Boolean @default(false)
+
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  profile          Profile?
+  conversations    Conversation[]
+  moodEntries      MoodEntry[]
+  journalEntries   JournalEntry[]
+  userMemories     UserMemory[]
+  safetyEvents     SafetyEvent[]
+  exercises        ExerciseSession[]
+  otpCodes         OtpCode[]
+  transactions     Transaction[]
+  session          Session[]
+  
+  tickets          Ticket[]
+
+  customMonthly1Price Int?
+  customMonthly3Price Int?
+  customMonthly6Price Int?
+
+  @@map("users")
+}
+
+model OtpCode {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phone     String   @unique
+  code      String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@map("otp_codes")
+}
+
+model Profile {
+  id               String         @id @default(cuid())
+  userId           String         @unique
+  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  locale           String         @default("fa")
+  tone             TonePreference @default(GENTLE)
+  memoryEnabled    Boolean        @default(true)
+  country          String?        @default("IR")
+  emergencyContact String?
+
+  @@map("profiles")
+}
+
+model Conversation {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String?
+  messages  Message[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@map("conversations")
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         String       
+  content        String       
+  riskLevel      RiskLevel    @default(SAFE)
+  feedback       Int?         
+  createdAt      DateTime     @default(now())
+  audioUrl       String?      // <--- فیلد صوتی حفظ شده
+
+  @@map("messages")
+}
+
+model MoodEntry {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mood      Int      
+  energy    Int      
+  stress    Int      
+  sleep     Int      
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@map("mood_entries")
+}
+
+model JournalEntry {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String?
+  content   String   
+  tags      String?  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("journal_entries")
+}
+
+model UserMemory {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key       String
+  value     String
+  createdAt DateTime @default(now())
+
+  @@map("user_memories")
+}
+
+model SafetyEvent {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  riskLevel RiskLevel
+  trigger   String
+  handledAt DateTime  @default(now())
+
+  @@map("safety_events")
+}
+
+model ExerciseSession {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exerciseType String   
+  durationSec  Int
+  createdAt    DateTime @default(now())
+
+  @@map("exercise_sessions")
+}
+
+model Transaction {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount        Int      
+  credits       Int      
+  status        String   @default("PENDING") 
+  authority     String?  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("transactions")
+}
+
+model SystemSetting {
+  id               String   @id @default(cuid())
+  initialGiftLimit Int      @default(50)  
+  dailyFreeLimit   Int      @default(5)   
+  
+  monthly1Credits  Int      @default(200)
+  monthly1Price    Int      @default(99000)
+  
+  monthly3Credits  Int      @default(700)
+  monthly3Price    Int      @default(249000)
+  
+  monthly6Credits  Int      @default(1600)
+  monthly6Price    Int      @default(449000)
+
+  updatedAt        DateTime @updatedAt
+
+  @@map("system_settings")
+}
+
+model Session {
+  id             String   @id @default(cuid())
+  userId         String
+  token          String   @unique
+  expiresAt      DateTime
+  lastActivityAt DateTime @default(now())
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// 🟢 مدل‌های جدید تیکت و پیام‌های تیکت (بدون ایجاد هیچ تداخلی با بخش‌های قبلی)
+model Ticket {
+  id        String          @id @default(cuid())
+  userId    String
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject   String
+  status    TicketStatus    @default(OPEN)
+  priority  TicketPriority  @default(MEDIUM)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  messages  TicketMessage[]
+  hasUnreadResponse Boolean       @default(false)
+  isRead    Boolean  @default(false) 
+  @@map("tickets")
+}
+
+
+
+model TicketMessage {
+  id        String   @id @default(cuid())
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  senderId  String   
+  message   String
+  createdAt DateTime @default(now())
+
+  @@map("ticket_messages")
+}
+
+
