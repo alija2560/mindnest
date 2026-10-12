@@ -93,7 +93,7 @@ export default async function DashboardPage() {
   // شرط تیکت‌های نیازمند بررسی برای ادمین
   
   const unresolvedTicketCondition = {
-  status: { in: ["OPEN", "IN_PROGRESS"] as ("OPEN" | "IN_PROGRESS")[] },
+  status: { in: ["OPEN", "IN_PROGRESS"] },
   isRead: false 
   };
 
