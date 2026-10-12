@@ -91,9 +91,10 @@ export default async function DashboardPage() {
   const isAdmin = user?.isAdmin || user?.role === 'ADMIN';
 
   // شرط تیکت‌های نیازمند بررسی برای ادمین
+  
   const unresolvedTicketCondition = {
-    status: { in: ["OPEN", "IN_PROGRESS"] as const },
-    isRead: false 
+  status: { in: ["OPEN", "IN_PROGRESS"] as ("OPEN" | "IN_PROGRESS")[] },
+  isRead: false 
   };
 
   // 🎯 شمارشگر تیکت‌های نیازمند توجه

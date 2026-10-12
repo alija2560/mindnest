@@ -125,10 +125,11 @@ export async function POST(
         data: {
           userId,
           amount,
-          status: "SUCCESS",
-          description: `بسته ${durationMonths} ماهه ثبت شده توسط ادمین`,
+          status: "SUCCESS"
         },
       });
+      // ایجاد تراکنش جدید موفق
+
 
       // فعال‌سازی یا تمدید اشتراک کاربر
       const updatedUser = await tx.user.update({
