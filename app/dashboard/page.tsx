@@ -5,6 +5,7 @@ import { NavaLogo } from "@/app/components/NavaLogo";
 import Link from "next/link";
 import { LanguageSwitcher } from "@/app/components/LanguageSwitcher";
 import { dictionary, Lang } from "@/lib/dictionary";
+import { TicketStatus } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -93,7 +94,7 @@ export default async function DashboardPage() {
   // شرط تیکت‌های نیازمند بررسی برای ادمین
   
   const unresolvedTicketCondition = {
-  status: { in: ["OPEN", "IN_PROGRESS"] },
+  status: { in: ["OPEN", "IN_PROGRESS"] as TicketStatus[] },
   isRead: false 
   };
 

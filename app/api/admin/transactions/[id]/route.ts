@@ -126,7 +126,7 @@ export async function POST(
           userId,
           amount,
           status: "SUCCESS"
-        },
+        } as any,
       });
       // ایجاد تراکنش جدید موفق
 
