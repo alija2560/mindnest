@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { sendSmsOtp } from "@/lib/sms";
 
 export async function POST(req: Request) {
   try {
@@ -36,12 +37,17 @@ export async function POST(req: Request) {
       create: { phone, code, expiresAt },
     });
 
-    // ۳. چاپ کد در ترمینال برای تست
-    console.log(`\n============================`);
-    console.log(` کد تایید برای شماره ${phone}: ${code} `);
-    console.log(`============================\n`);
+    // ۳. ارسال واقعی پیامک از طریق sms.ir به جای console.log
+    const isSent = await sendSmsOtp(phone, code);
 
-    return NextResponse.json({ success: true });
+    if (!isSent) {
+      return NextResponse.json(
+        { success: false, error: "خطا در ارسال پیامک. لطفاً چند لحظه دیگر دوباره تلاش کنید." },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ success: true, message: "کد تایید با موفقیت ارسال شد" });
   } catch (error) {
     console.error("SEND OTP ERROR:", error);
     return NextResponse.json({ error: "خطا در سرور" }, { status: 500 });
