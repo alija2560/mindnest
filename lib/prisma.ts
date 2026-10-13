@@ -4,6 +4,12 @@ import { PrismaClient } from "@prisma/client";
 
 const connectionString = process.env.DATABASE_URL;
 
+if (!connectionString) {
+  console.error("CRITICAL ERROR: DATABASE_URL environment variable is not defined!");
+} else {
+  console.log("DATABASE_URL is loaded successfully.");
+}
+
 const pool = new Pool({ connectionString });
 const adapter = new PrismaPg(pool);
 
