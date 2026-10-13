@@ -6,10 +6,10 @@ console.log("=== DEBUG DATABASE_URL ===", process.env.DATABASE_URL);
 
 const connectionString = process.env.DATABASE_URL;
 
-// تعریف متغیر pool فقط یک‌بار همراه با تنظیمات امنیتی
 const pool = new Pool({ 
   connectionString,
-  ssl: false 
+  ssl: false,
+  family: 4 // الزام استفاده از IPv4 برای شبکه داخلی لیارا
 });
 
 const adapter = new PrismaPg(pool);
