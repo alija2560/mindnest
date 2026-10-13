@@ -1,4 +1,4 @@
-import { Pool } from "pg";
+import { Pool, PoolConfig } from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
 
@@ -6,12 +6,13 @@ console.log("=== DEBUG DATABASE_URL ===", process.env.DATABASE_URL);
 
 const connectionString = process.env.DATABASE_URL;
 
-const pool = new Pool({ 
+const poolConfig: PoolConfig & { family?: number } = {
   connectionString,
   ssl: false,
-  family: 4 // الزام استفاده از IPv4 برای شبکه داخلی لیارا
-});
+  family: 4,
+};
 
+const pool = new Pool(poolConfig);
 const adapter = new PrismaPg(pool);
 
 const globalForPrisma = global as unknown as { prisma: PrismaClient };
