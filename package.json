@@ -9,9 +9,7 @@
     "lint": "eslint",
     "postinstall": "prisma generate && prisma db push --accept-data-loss"
   },
-  "prisma": {
-    "schema": "prisma/schema.prisma"
-  },
+ 
     "dependencies": {
     "@google/genai": "^2.19.0",
     "@prisma/adapter-pg": "^7.10.0",
