@@ -9,9 +9,6 @@
   "start": "next start",
   "lint": "eslint"
 },
-  "prisma": {
-    "schema": "schema.prisma"
-  },
  
     "dependencies": {
     "@google/genai": "^2.19.0",
