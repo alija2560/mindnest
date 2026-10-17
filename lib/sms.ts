@@ -8,6 +8,9 @@ export async function sendSmsOtp(mobile: string, code: string): Promise<boolean>
   }
 
   const templateId = Number(templateIdStr);
+  
+  // تولید تاریخ جاری برای متغیر #DATE#
+  const currentDate = new Date().toLocaleDateString('fa-IR');
 
   try {
     const response = await fetch("https://api.sms.ir/v1/send/verify", {
@@ -22,8 +25,12 @@ export async function sendSmsOtp(mobile: string, code: string): Promise<boolean>
         templateId: templateId,
         parameters: [
           {
-            name: "Code", // این نام باید دقیقا مطابق با متغیری باشد که در قالب پنل sms.ir تعریف کرده‌اید
+            name: "OTP", // نام این متغیر باید دقیقاً مطابق با #OTP# در قالب باشد
             value: code,
+          },
+          {
+            name: "DATE", // نام این متغیر باید دقیقاً مطابق با #DATE# در قالب باشد
+            value: currentDate,
           },
         ],
       }),
@@ -31,7 +38,6 @@ export async function sendSmsOtp(mobile: string, code: string): Promise<boolean>
 
     const data = await response.json();
     
-    // بررسی موفقیت‌آمیز بودن پاسخ sms.ir
     if (response.ok && (data.status === 1 || data.status === 200)) {
       return true;
     } else {
