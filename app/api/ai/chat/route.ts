@@ -5,9 +5,10 @@ import { Groq } from "groq-sdk";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 
-// راه‌اندازی کلاینت گروق با کلید امنیتی
+// 🚀 تغییر آدرس پایه (Base URL) به پروکسی کلودفلر برای عبور از تحریم و خطای ۴۰۳
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
+  baseURL: "https://nava-proxy.ali-nava-proxy.workers.dev/openai/v1",
 });
 
 const getSystemPrompt = (tone: string = "friendly") => {
@@ -88,7 +89,6 @@ export async function POST(req: Request) {
       const FREE_LIMIT = 10;
 
       if (user.messageCount >= FREE_LIMIT) {
-        // الف) بررسی اینکه آیا کاربر در حال حاضر در بازه قفل موقت قرار دارد یا خیر
         if (user.lockUntil && new Date(user.lockUntil) > now) {
           const remainingTimeMs = new Date(user.lockUntil).getTime() - now.getTime();
           const remainingMinutes = Math.ceil(remainingTimeMs / (1000 * 60));
@@ -107,7 +107,6 @@ export async function POST(req: Request) {
             { status: 403 }
           );
         } else {
-          // ب) اگر زمان قفل تمام شده باشد، اجازه ارسال ۱ پیام داده می‌شود 
           const nextLockTime = new Date(now.getTime() + 2 * 60 * 60 * 1000); // قفل ۲ ساعته
           await prisma.user.update({
             where: { id: userId },
@@ -133,7 +132,7 @@ export async function POST(req: Request) {
     let audioUrl = null;
     let transcribedText = "";
 
-    // ۳. ذخیره فایل صوتی روی سرور و تبدیل با مدل Whisper
+    // ۳. ذخیره فایل صوتی روی سرور و تبدیل با مدل Whisper (از طریق پروکسی)
     if (targetAudio && targetAudio.size > 0) {
       const bytes = await targetAudio.arrayBuffer();
       const buffer = Buffer.from(bytes);
@@ -149,7 +148,7 @@ export async function POST(req: Request) {
       }
 
       try {
-        console.log("🎙️ Sending audio to Whisper...");
+        console.log("🎙️ Sending audio to Whisper via Proxy...");
         const transcription = await groq.audio.transcriptions.create({
           file: targetAudio,
           model: "whisper-large-v3",
@@ -163,7 +162,6 @@ export async function POST(req: Request) {
       }
     }
 
-    // ۴. ترکیب متن صوتی به عنوان متنِ اصلی در زیر صوت
     let userMessageContent = message;
     if (targetAudio) {
       if (transcribedText) {
@@ -187,7 +185,7 @@ export async function POST(req: Request) {
       conversationId = newConv.id;
     }
 
-    // ۵. ذخیره پیام کاربر در دیتابیس
+    // ۴. ذخیره پیام کاربر در دیتابیس
     await prisma.message.create({
       data: { 
         conversationId, 
@@ -197,7 +195,6 @@ export async function POST(req: Request) {
       },
     });
 
-    // دریافت تاریخچه و محدود کردن آن به ۱۰ پیام آخر جهت جلوگیری از خطای کمبود توکن (Rate Limit)
     const allMessages = await prisma.message.findMany({
       where: { conversationId },
       orderBy: { createdAt: "asc" },
@@ -212,6 +209,7 @@ export async function POST(req: Request) {
 
     const systemPromptText = getSystemPrompt(userTone);
 
+    // ۵. ارسال درخواست چت به Groq از طریق پروکسی کلودفلر
     const chatCompletion = await groq.chat.completions.create({
       messages: [
         {
@@ -220,7 +218,7 @@ export async function POST(req: Request) {
         },
         ...formattedHistory,
       ],
-      model: "openai/gpt-oss-120b",
+      model: "llama-3.3-70b-versatile", // مدل استاندارد و پایدار Groq
       temperature: 0.7,
     });
 
@@ -235,7 +233,6 @@ export async function POST(req: Request) {
       data: { updatedAt: new Date() },
     });
 
-    // ۶. افزایش شمارنده پیام‌های کاربر (فقط در صورت نداشتن اشتراک فعال)
     let updatedMessageCount = user.messageCount;
     if (!hasActiveSubscription) {
       updatedMessageCount += 1;
