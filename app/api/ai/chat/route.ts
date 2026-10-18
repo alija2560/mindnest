@@ -213,19 +213,18 @@ export async function POST(req: Request) {
 
     const systemPromptText = getSystemPrompt(userTone);
 
-    const chatCompletion = await groq.chat.completions.create({
-      messages: [
-        {
-          role: "system",
-          content: systemPromptText,
-        },
-        ...formattedHistory,
-      ],
-      mmodel: "llama-3.1-70b-versatile",
-      temperature: 0.7,
-    });
-
-    const aiResponseText = chatCompletion.choices[0]?.message?.content || "متوجه شدم، کمی بیشتر توضیح می‌دهی؟";
+  const chatCompletion = await groq.chat.completions.create({
+    messages: [
+      {
+        role: "system",
+        content: systemPromptText,
+      },
+      ...formattedHistory,
+    ],
+    model: "llama-3.1-70b-versatile",
+    temperature: 0.7,
+  });
+   const aiResponseText = chatCompletion.choices[0]?.message?.content || "متوجه شدم، کمی بیشتر توضیح می‌دهی؟";
 
     await prisma.message.create({
       data: { conversationId, sender: "assistant", content: aiResponseText },
