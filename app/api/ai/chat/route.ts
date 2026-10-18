@@ -221,7 +221,7 @@ export async function POST(req: Request) {
       },
       ...formattedHistory,
     ],
-    model: "llama-3.1-70b-versatile",
+    model: "llama-3.1-8b-instant",
     temperature: 0.7,
   });
    const aiResponseText = chatCompletion.choices[0]?.message?.content || "متوجه شدم، کمی بیشتر توضیح می‌دهی؟";
