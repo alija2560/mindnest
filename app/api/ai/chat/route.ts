@@ -8,7 +8,7 @@ import path from "path";
 // 🚀 تنظیم Base URL به پروکسی Vercel برای عبور از تحریم و خطای ۴۰۳
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY || "dummy",
-  baseURL: "https://YOUR-VERCEL-URL.vercel.app/openai/v1", // <-- لینک پروکسی Vercel خود را اینجا وارد کنید
+  baseURL: "https://nava-vercel-proxy.vercel.app/openai/v1", // آدرس پروکسی Vercel شما
 });
 
 const getSystemPrompt = (tone: string = "friendly") => {
@@ -89,6 +89,7 @@ export async function POST(req: Request) {
       const FREE_LIMIT = 10;
 
       if (user.messageCount >= FREE_LIMIT) {
+        // الف) بررسی اینکه آیا کاربر در حال حاضر در بازه قفل موقت قرار دارد یا خیر
         if (user.lockUntil && new Date(user.lockUntil) > now) {
           const remainingTimeMs = new Date(user.lockUntil).getTime() - now.getTime();
           const remainingMinutes = Math.ceil(remainingTimeMs / (1000 * 60));
@@ -107,6 +108,7 @@ export async function POST(req: Request) {
             { status: 403 }
           );
         } else {
+          // ب) اگر زمان قفل تمام شده باشد، اجازه ارسال ۱ پیام داده می‌شود 
           const nextLockTime = new Date(now.getTime() + 2 * 60 * 60 * 1000); // قفل ۲ ساعته
           await prisma.user.update({
             where: { id: userId },
@@ -132,7 +134,7 @@ export async function POST(req: Request) {
     let audioUrl = null;
     let transcribedText = "";
 
-    // ۳. ذخیره فایل صوتی روی سرور و تبدیل با مدل Whisper از طریق پروکسی Vercel
+    // ۳. ذخیره فایل صوتی روی سرور و تبدیل با مدل Whisper از طریق پروکسی
     if (targetAudio && targetAudio.size > 0) {
       const bytes = await targetAudio.arrayBuffer();
       const buffer = Buffer.from(bytes);
@@ -148,7 +150,7 @@ export async function POST(req: Request) {
       }
 
       try {
-        console.log("🎙️ Sending audio to Whisper via Vercel Proxy...");
+        console.log("🎙️ Sending audio to Whisper via Proxy...");
         const transcription = await groq.audio.transcriptions.create({
           file: targetAudio,
           model: "whisper-large-v3",
@@ -162,6 +164,7 @@ export async function POST(req: Request) {
       }
     }
 
+    // ۴. ترکیب متن صوتی به عنوان متنِ اصلی در زیر صوت
     let userMessageContent = message;
     if (targetAudio) {
       if (transcribedText) {
@@ -185,7 +188,7 @@ export async function POST(req: Request) {
       conversationId = newConv.id;
     }
 
-    // ۴. ذخیره پیام کاربر در دیتابیس
+    // ۵. ذخیره پیام کاربر در دیتابیس
     await prisma.message.create({
       data: { 
         conversationId, 
@@ -195,6 +198,7 @@ export async function POST(req: Request) {
       },
     });
 
+    // دریافت تاریخچه و محدود کردن آن به ۱۰ پیام آخر جهت جلوگیری از خطای کمبود توکن (Rate Limit)
     const allMessages = await prisma.message.findMany({
       where: { conversationId },
       orderBy: { createdAt: "asc" },
@@ -209,7 +213,6 @@ export async function POST(req: Request) {
 
     const systemPromptText = getSystemPrompt(userTone);
 
-    // ۵. ارسال درخواست چت به Groq از طریق پروکسی Vercel
     const chatCompletion = await groq.chat.completions.create({
       messages: [
         {
@@ -233,6 +236,7 @@ export async function POST(req: Request) {
       data: { updatedAt: new Date() },
     });
 
+    // ۶. افزایش شمارنده پیام‌های کاربر (فقط در صورت نداشتن اشتراک فعال)
     let updatedMessageCount = user.messageCount;
     if (!hasActiveSubscription) {
       updatedMessageCount += 1;
