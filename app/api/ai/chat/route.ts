@@ -8,7 +8,7 @@ import path from "path";
 // 🚀 تنظیم Base URL به پروکسی Vercel برای عبور از تحریم و خطای ۴۰۳
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY || "dummy",
-  baseURL: "https://nava-vercel-proxy.vercel.app/openai/v1", // آدرس پروکسی Vercel شما
+  baseURL: "https://nava-vercel-proxy.vercel.app", // آدرس پروکسی Vercel شما
 });
 
 const getSystemPrompt = (tone: string = "friendly") => {
