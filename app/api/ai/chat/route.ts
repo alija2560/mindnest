@@ -221,7 +221,7 @@ export async function POST(req: Request) {
         },
         ...formattedHistory,
       ],
-      model: "llama-3.3-70b-versatile",
+      mmodel: "llama-3.1-70b-versatile",
       temperature: 0.7,
     });
 
