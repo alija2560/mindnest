@@ -5,10 +5,10 @@ import { Groq } from "groq-sdk";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 
-// 🚀 تغییر آدرس پایه (Base URL) به پروکسی کلودفلر برای عبور از تحریم و خطای ۴۰۳
+// 🚀 تنظیم Base URL به پروکسی Vercel برای عبور از تحریم و خطای ۴۰۳
 const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-  baseURL: "https://nava-proxy.ali-nava-proxy.workers.dev/openai/v1",
+  apiKey: process.env.GROQ_API_KEY || "dummy",
+  baseURL: "https://YOUR-VERCEL-URL.vercel.app/openai/v1", // <-- لینک پروکسی Vercel خود را اینجا وارد کنید
 });
 
 const getSystemPrompt = (tone: string = "friendly") => {
@@ -132,7 +132,7 @@ export async function POST(req: Request) {
     let audioUrl = null;
     let transcribedText = "";
 
-    // ۳. ذخیره فایل صوتی روی سرور و تبدیل با مدل Whisper (از طریق پروکسی)
+    // ۳. ذخیره فایل صوتی روی سرور و تبدیل با مدل Whisper از طریق پروکسی Vercel
     if (targetAudio && targetAudio.size > 0) {
       const bytes = await targetAudio.arrayBuffer();
       const buffer = Buffer.from(bytes);
@@ -148,7 +148,7 @@ export async function POST(req: Request) {
       }
 
       try {
-        console.log("🎙️ Sending audio to Whisper via Proxy...");
+        console.log("🎙️ Sending audio to Whisper via Vercel Proxy...");
         const transcription = await groq.audio.transcriptions.create({
           file: targetAudio,
           model: "whisper-large-v3",
@@ -209,7 +209,7 @@ export async function POST(req: Request) {
 
     const systemPromptText = getSystemPrompt(userTone);
 
-    // ۵. ارسال درخواست چت به Groq از طریق پروکسی کلودفلر
+    // ۵. ارسال درخواست چت به Groq از طریق پروکسی Vercel
     const chatCompletion = await groq.chat.completions.create({
       messages: [
         {
@@ -218,7 +218,7 @@ export async function POST(req: Request) {
         },
         ...formattedHistory,
       ],
-      model: "llama-3.3-70b-versatile", // مدل استاندارد و پایدار Groq
+      model: "llama-3.3-70b-versatile",
       temperature: 0.7,
     });
 
