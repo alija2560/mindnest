@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { NavaLogo } from "@/app/components/NavaLogo";
 
-// 🌍 لیست کامل تمامی کشورهای جهان به همراه طول استاندارد شماره موبایل
 const COUNTRIES = [
   { code: "+93", name: "Afghanistan", fa: "افغانستان", flag: "🇦🇫", length: 9 },
   { code: "+355", name: "Albania", fa: "آلبانی", flag: "🇦🇱", length: 9 },
@@ -309,17 +308,26 @@ export default function AuthPage() {
   };
 
   return (
-    <div dir="rtl" className="flex h-screen w-screen items-center justify-center bg-slate-950 text-slate-100 font-sans px-4">
-      <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl backdrop-blur-xl">
+    <div dir="rtl" className="relative flex h-screen w-screen items-center justify-center bg-slate-950 text-slate-100 font-sans overflow-hidden px-4">
+      
+      {/* 🌟 پس‌زمینه زنده و مدرن (گرادیان‌های متحرک و افکت نورانی) */}
+      <div className="absolute -top-40 -right-40 w-96 h-96 bg-teal-500/20 rounded-full blur-[120px] pointer-events-none animate-pulse"></div>
+      <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-emerald-600/20 rounded-full blur-[120px] pointer-events-none animate-pulse" style={{ animationDuration: '4s' }}></div>
+      <div className="absolute inset-0 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:24px_24px] opacity-25 pointer-events-none"></div>
+
+      {/* کانتینر اصلی کارت لاگین با افکت شیشه‌ای (Glassmorphism) */}
+      <div className="relative w-full max-w-md bg-slate-900/80 border border-slate-800/80 rounded-3xl p-8 shadow-2xl backdrop-blur-2xl transition-all duration-300">
         
         <div className="text-center mb-8">
-            <NavaLogo className="w-14 h-14 mx-auto mb-4 drop-shadow-lg" />
-            <h1 className="text-xl font-bold">ورود به نوا</h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">پناهگاه امن ذهن و افکار شما</p>
+            <div className="inline-flex p-3 rounded-2xl bg-teal-500/10 border border-teal-500/20 mb-3 shadow-inner">
+              <NavaLogo className="w-10 h-10 drop-shadow-md" />
+            </div>
+            <h1 className="text-xl font-bold tracking-tight text-white">ورود به دستیار هوشمند نوا</h1>
+            <p className="text-xs text-slate-400 mt-1.5">پناهگاه امن ذهن و افکار شما</p>
         </div>
 
         {error && (
-          <div className="mb-6 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs text-center leading-relaxed">
+          <div className="mb-6 p-3.5 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs text-center leading-relaxed animate-shake">
             {error}
           </div>
         )}
@@ -327,9 +335,8 @@ export default function AuthPage() {
         {step === "phone" ? (
           <form onSubmit={handleSendPhone} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-2">شماره موبایل</label>
+              <label className="block text-xs font-medium text-slate-300 mb-2">شماره موبایل</label>
               
-              {/* بخش انتخاب کد کشور (جمع‌وجور و شیک) و فیلد شماره در کنار هم */}
               <div className="flex gap-2" dir="ltr">
                 <select
                   value={countryCode}
@@ -338,7 +345,7 @@ export default function AuthPage() {
                     setPhone("");
                     setError("");
                   }}
-                  className="w-[110px] bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-2xl px-2 py-3 text-xs text-slate-200 outline-none focus:border-teal-500 transition-all font-mono tracking-wide cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-[length:12px_12px] bg-[left_6px_center] bg-no-repeat pl-6 text-center"
+                  className="w-[110px] bg-slate-950/80 border border-slate-800 hover:border-slate-700 rounded-2xl px-2 py-3.5 text-xs text-slate-200 outline-none focus:border-teal-500 transition-all font-mono tracking-wide cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-[length:12px_12px] bg-[left_8px_center] bg-no-repeat pl-6 text-center shadow-inner"
                 >
                   {COUNTRIES.map((c) => (
                     <option key={`${c.code}-${c.name}`} value={c.code} className="bg-slate-900 text-slate-100 py-1 font-mono">
@@ -352,18 +359,17 @@ export default function AuthPage() {
                   value={phone}
                   onChange={handlePhoneChange}
                   placeholder={countryCode === "+98" ? "9123456789" : "شماره موبایل"}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3 text-sm text-slate-100 placeholder-slate-600 outline-none focus:border-teal-500 transition-all text-left font-mono"
+                  className="w-full bg-slate-950/80 border border-slate-800 rounded-2xl px-4 py-3.5 text-sm text-slate-100 placeholder-slate-600 outline-none focus:border-teal-500 transition-all text-left font-mono shadow-inner"
                   dir="ltr"
                 />
               </div>
             </div>
 
-            {/* بخش کپچای حرفه‌ای‌تر تصویری با قابلیت ریفرش */}
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-2">کد امنیتی</label>
+              <label className="block text-xs font-medium text-slate-300 mb-2">کد امنیتی</label>
               <div className="flex gap-3 items-center">
                 <div 
-                  className="flex-1 bg-slate-950 border border-slate-800 rounded-2xl py-3 text-center tracking-[8px] font-mono font-bold text-teal-400 text-lg select-none relative overflow-hidden shadow-inner"
+                  className="flex-1 bg-slate-950/90 border border-slate-800 rounded-2xl py-3 text-center tracking-[10px] font-mono font-bold text-teal-400 text-lg select-none relative overflow-hidden shadow-inner"
                   style={{ textDecoration: "line-through", fontStyle: "italic" }}
                 >
                   {captchaCode}
@@ -371,7 +377,7 @@ export default function AuthPage() {
                 <button
                   type="button"
                   onClick={generateAdvancedCaptcha}
-                  className="p-3 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-2xl text-slate-400 hover:text-teal-400 transition-all cursor-pointer"
+                  className="p-3.5 bg-slate-950/80 hover:bg-slate-800 border border-slate-800 rounded-2xl text-slate-400 hover:text-teal-400 transition-all cursor-pointer shadow-sm"
                   title="تغییر کد امنیتی"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
@@ -384,7 +390,7 @@ export default function AuthPage() {
                 value={captchaInput}
                 onChange={(e) => setCaptchaInput(e.target.value)}
                 placeholder="کد داخل تصویر را وارد کنید"
-                className="w-full mt-3 bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3 text-sm text-slate-100 placeholder-slate-600 outline-none focus:border-teal-500 transition-all text-center font-mono tracking-widest uppercase"
+                className="w-full mt-3 bg-slate-950/80 border border-slate-800 rounded-2xl px-4 py-3.5 text-sm text-slate-100 placeholder-slate-600 outline-none focus:border-teal-500 transition-all text-center font-mono tracking-widest uppercase shadow-inner"
                 dir="ltr"
               />
             </div>
@@ -392,7 +398,7 @@ export default function AuthPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-bold py-3 rounded-2xl transition-all shadow-lg shadow-teal-500/20 disabled:opacity-50 cursor-pointer text-sm"
+              className="w-full mt-2 bg-gradient-to-r from-teal-500 to-emerald-400 hover:from-teal-400 hover:to-emerald-300 text-slate-950 font-bold py-3.5 rounded-2xl transition-all shadow-lg shadow-teal-500/25 disabled:opacity-50 cursor-pointer text-sm"
             >
               {loading ? "در حال ارسال..." : "دریافت کد تایید"}
             </button>
@@ -400,8 +406,8 @@ export default function AuthPage() {
         ) : (
           <form onSubmit={handleVerifyOtp} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-2">
-                کد تایید ۴ رقمی ارسال شده به {countryCode} {phone}
+              <label className="block text-xs font-medium text-slate-300 mb-2.5 text-center">
+                کد تایید ۴ رقمی ارسال شده به <span className="font-mono text-teal-400" dir="ltr">{countryCode} {phone}</span>
               </label>
               <input
                 type="text"
@@ -409,23 +415,23 @@ export default function AuthPage() {
                 value={otp}
                 onChange={(e) => setOtp(e.target.value)}
                 placeholder="----"
-                className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3 text-sm text-slate-100 placeholder-slate-600 outline-none focus:border-teal-500 transition-all text-center tracking-widest font-mono text-xl"
+                className="w-full bg-slate-950/80 border border-slate-800 rounded-2xl px-4 py-4 text-sm text-slate-100 placeholder-slate-600 outline-none focus:border-teal-500 transition-all text-center tracking-[16px] font-mono text-2xl shadow-inner"
                 dir="ltr"
               />
             </div>
 
-            <div className="text-center text-xs text-slate-400">
+            <div className="text-center text-xs text-slate-400 pt-1">
               {timeLeft > 0 ? (
                 <span>اعتبار کد تایید: <strong className="text-teal-400 font-mono">{formatTime(timeLeft)}</strong></span>
               ) : (
-                <span className="text-red-400">کد تایید منقضی شد. لطفاً درخواست مجدد دهید.</span>
+                <span className="text-red-400 font-medium">کد تایید منقضی شد. لطفاً درخواست مجدد دهید.</span>
               )}
             </div>
 
             <button
               type="submit"
               disabled={loading || timeLeft === 0}
-              className="w-full bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-bold py-3 rounded-2xl transition-all shadow-lg shadow-teal-500/20 disabled:opacity-50 cursor-pointer text-sm"
+              className="w-full mt-2 bg-gradient-to-r from-teal-500 to-emerald-400 hover:from-teal-400 hover:to-emerald-300 text-slate-950 font-bold py-3.5 rounded-2xl transition-all shadow-lg shadow-teal-500/25 disabled:opacity-50 cursor-pointer text-sm"
             >
               {loading ? "در حال بررسی..." : "تایید و ورود"}
             </button>
@@ -437,9 +443,9 @@ export default function AuthPage() {
                   setStep("phone");
                   generateAdvancedCaptcha();
                 }}
-                className="w-full text-xs text-teal-400 hover:underline pt-1 text-center cursor-pointer"
+                className="w-full text-xs text-teal-400 hover:underline pt-2 text-center cursor-pointer font-medium"
               >
-                ارسال مجدد کد تایید (تغییر شماره یا دریافت کد جدید)
+                ارسال مجدد کد تایید (دریافت کد جدید)
               </button>
             )}
 
@@ -449,7 +455,7 @@ export default function AuthPage() {
                 setStep("phone");
                 generateAdvancedCaptcha();
               }}
-              className="w-full text-xs text-slate-400 hover:text-teal-400 transition-colors pt-2 text-center cursor-pointer"
+              className="w-full text-xs text-slate-400 hover:text-teal-400 transition-colors pt-1 text-center cursor-pointer"
             >
               ویرایش شماره موبایل
             </button>
