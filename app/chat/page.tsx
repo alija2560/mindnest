@@ -95,7 +95,15 @@ export default function ChatPage() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  
+  // تنظیم حالت پیش‌فرض سایدبار بر اساس سایز صفحه کاربر
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    if (window.innerWidth >= 768) {
+      setIsSidebarOpen(true);
+    }
+  }, []);
   
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedFilePreviewUrl, setSelectedFilePreviewUrl] = useState<string | null>(null);
@@ -111,6 +119,10 @@ export default function ChatPage() {
   const [isReportMenuOpen, setIsReportMenuOpen] = useState(false);
   const reportMenuRef = useRef<HTMLDivElement>(null);
 
+  // منوی هدر برای دکمه‌های کشویی در موبایل
+  const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
+  const headerMenuRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     const savedTheme = localStorage.getItem("nava_theme") as "dark" | "light" | null;
     if (savedTheme) {
@@ -122,6 +134,9 @@ export default function ChatPage() {
     const handleClickOutside = (event: MouseEvent) => {
       if (reportMenuRef.current && !reportMenuRef.current.contains(event.target as Node)) {
         setIsReportMenuOpen(false);
+      }
+      if (headerMenuRef.current && !headerMenuRef.current.contains(event.target as Node)) {
+        setIsHeaderMenuOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -168,6 +183,7 @@ export default function ChatPage() {
 
   const handleExportPdf = () => {
     setIsReportMenuOpen(false);
+    setIsHeaderMenuOpen(false);
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
       alert("لطفاً اجازه باز شدن پنجره پاپ‌آپ را به مرورگر بدهید.");
@@ -272,6 +288,7 @@ export default function ChatPage() {
 
   const handleExportTxt = () => {
     setIsReportMenuOpen(false);
+    setIsHeaderMenuOpen(false);
     const textContent = messages
       .map((m) => `${m.role === "user" ? "شما" : "نوا"}:\n${m.content}\n\n-----------------------------------\n`)
       .join("");
@@ -287,6 +304,7 @@ export default function ChatPage() {
 
   const handleExportDocx = () => {
     setIsReportMenuOpen(false);
+    setIsHeaderMenuOpen(false);
     const htmlContent = `
       <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
       <head><meta charset="utf-8"><title>Chat Export</title></head>
@@ -338,6 +356,9 @@ export default function ChatPage() {
       console.error("Error loading specific conversation:", err);
     } finally {
       setIsLoading(false);
+      if (window.innerWidth < 768) {
+        setIsSidebarOpen(false); // بستن خودکار سایدبار در موبایل پس از انتخاب چت
+      }
     }
   };  
 
@@ -346,6 +367,9 @@ export default function ChatPage() {
     setConversationId(null);
     setMessages([INITIAL_GREETING]);
     clearSelectedFile();
+    if (window.innerWidth < 768) {
+      setIsSidebarOpen(false);
+    }
   };
 
   const clearSelectedFile = () => {
@@ -413,6 +437,7 @@ export default function ChatPage() {
   };
 
   const handleClearCurrentChat = async () => {
+    setIsHeaderMenuOpen(false);
     if (!conversationId) {
       setMessages([INITIAL_GREETING]);
       return;
@@ -504,6 +529,7 @@ export default function ChatPage() {
   };
 
   const NextBack = async () => {
+    setIsHeaderMenuOpen(false);
     setIsLoggingOut(true);
     try {
       await fetch("/api/Dashboard", { method: "POST", credentials: "include" });
@@ -515,6 +541,7 @@ export default function ChatPage() {
   };
 
   const handleLogout = async () => {
+    setIsHeaderMenuOpen(false);
     setIsLoggingOut(true);
     try {
       const res = await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
@@ -647,8 +674,8 @@ export default function ChatPage() {
   return (
     <div dir={lang === 'fa' ? 'rtl' : 'ltr'} className={`flex h-screen w-screen font-sans overflow-hidden ${isDark ? "bg-slate-950 text-slate-100" : "bg-slate-50 text-slate-800"}`}>
       
-      {/* سایدبار */}
-      <aside className={`${isSidebarOpen ? 'w-72' : 'w-0'} transition-all duration-300 ${isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"} border-l flex flex-col shrink-0 overflow-hidden z-30`}>
+      {/* سایدبار کشویی در موبایل و ثابت در دسکتاپ */}
+      <aside className={`fixed md:relative inset-y-0 right-0 md:right-auto ${isSidebarOpen ? 'w-72 translate-x-0' : 'w-0 translate-x-full md:translate-x-0'} transition-all duration-300 ${isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"} border-l flex flex-col shrink-0 overflow-hidden z-40`}>
         <div className={`p-4 border-b ${isDark ? "border-slate-800" : "border-slate-200"} flex flex-col gap-3 shrink-0`}>
           <div className="flex items-center justify-between">
             <span className={`font-bold text-sm ${isDark ? "text-slate-200" : "text-slate-700"}`}>{t("chatHistory")}</span>
@@ -728,7 +755,7 @@ export default function ChatPage() {
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         
         {/* هدر */}
-        <header className={`flex items-center justify-between px-6 py-4 ${isDark ? "bg-slate-900/80 border-slate-800" : "bg-white/80 border-slate-200"} backdrop-blur-xl border-b shrink-0 z-20`}>
+        <header className={`flex items-center justify-between px-4 md:px-6 py-4 ${isDark ? "bg-slate-900/80 border-slate-800" : "bg-white/80 border-slate-200"} backdrop-blur-xl border-b shrink-0 z-20`}>
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -742,7 +769,9 @@ export default function ChatPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="relative" ref={reportMenuRef}>
+            
+            {/* منوی گزارش‌ها (دسکتاپ) */}
+            <div className="relative hidden md:block" ref={reportMenuRef}>
               <button
                 onClick={() => setIsReportMenuOpen(!isReportMenuOpen)}
                 className={`px-3 py-1.5 rounded-xl ${isDark ? "bg-slate-800/60 text-slate-200 hover:text-teal-400 border-slate-700" : "bg-slate-100 text-slate-700 hover:text-teal-600 border-slate-200"} border text-xs cursor-pointer transition-all flex items-center gap-1.5 font-medium`}
@@ -766,26 +795,60 @@ export default function ChatPage() {
               )}
             </div>
 
-            <div className={`h-4 w-[1px] ${isDark ? "bg-slate-800" : "bg-slate-200"} mx-1`} />
+            <div className={`hidden md:block h-4 w-[1px] ${isDark ? "bg-slate-800" : "bg-slate-200"} mx-1`} />
 
-            <a href="/settings" className={`px-3 py-1.5 rounded-xl ${isDark ? "bg-slate-800/60 text-slate-300 hover:text-teal-400" : "bg-slate-100 text-slate-600 hover:text-teal-600"} border text-xs transition-all`}>
-              ⚙️ {t("settings")}
-            </a>
+            {/* دکمه‌های افقی کامل (دسکتاپ) */}
+            <div className="hidden md:flex items-center gap-2">
+              <a href="/settings" className={`px-3 py-1.5 rounded-xl ${isDark ? "bg-slate-800/60 text-slate-300 hover:text-teal-400" : "bg-slate-100 text-slate-600 hover:text-teal-600"} border text-xs transition-all`}>
+                ⚙️ {t("settings")}
+              </a>
 
-            <button onClick={toggleTheme} className={`p-2 rounded-xl ${isDark ? "bg-slate-800/60 text-amber-400" : "bg-slate-100 text-amber-600"} border text-xs cursor-pointer`}>
-              {isDark ? "☀" : "🌙"}
-            </button>
+              <button onClick={toggleTheme} className={`p-2 rounded-xl ${isDark ? "bg-slate-800/60 text-amber-400" : "bg-slate-100 text-amber-600"} border text-xs cursor-pointer`}>
+                {isDark ? "☀" : "🌙"}
+              </button>
 
-            <button onClick={handleClearCurrentChat} disabled={isClearing} className={`px-3 py-1.5 rounded-xl ${isDark ? "bg-slate-800/60 text-slate-300" : "bg-slate-100 text-slate-600"} border text-xs cursor-pointer`}>
-              {t("clearHistory")}
-            </button>
+              <button onClick={handleClearCurrentChat} disabled={isClearing} className={`px-3 py-1.5 rounded-xl ${isDark ? "bg-slate-800/60 text-slate-300" : "bg-slate-100 text-slate-600"} border text-xs cursor-pointer`}>
+                {t("clearHistory")}
+              </button>
 
-            <button onClick={handleLogout} disabled={isLoggingOut} className={`px-3 py-1.5 rounded-xl ${isDark ? "bg-slate-800/60 text-slate-300" : "bg-slate-100 text-slate-600"} border text-xs cursor-pointer`}>
-              {t("exit")}
-            </button>
-            <button onClick={NextBack} disabled={isLoggingOut} className={`px-3 py-1.5 rounded-xl ${isDark ? "bg-slate-800/60 text-slate-300" : "bg-slate-100 text-slate-600"} border text-xs cursor-pointer`}>
-               {isLoggingOut ? "در حال انتقال..." : t("backToDashboard")}
-            </button>
+              <button onClick={handleLogout} disabled={isLoggingOut} className={`px-3 py-1.5 rounded-xl ${isDark ? "bg-slate-800/60 text-slate-300" : "bg-slate-100 text-slate-600"} border text-xs cursor-pointer`}>
+                {t("exit")}
+              </button>
+
+              <button onClick={NextBack} disabled={isLoggingOut} className={`px-3 py-1.5 rounded-xl ${isDark ? "bg-slate-800/60 text-slate-300" : "bg-slate-100 text-slate-600"} border text-xs cursor-pointer`}>
+                 {isLoggingOut ? "در حال انتقال..." : t("backToDashboard")}
+              </button>
+            </div>
+
+            {/* منوی سه نقطه کشویی (موبایل) */}
+            <div className="relative md:hidden" ref={headerMenuRef}>
+              <button
+                onClick={() => setIsHeaderMenuOpen(!isHeaderMenuOpen)}
+                className={`p-2 rounded-xl ${isDark ? "bg-slate-800/60 text-slate-200 border-slate-700" : "bg-slate-100 text-slate-700 border-slate-200"} border text-sm`}
+              >
+                ⋮
+              </button>
+
+              {isHeaderMenuOpen && (
+                <div className={`absolute left-0 mt-2 w-48 rounded-2xl shadow-xl ${isDark ? "bg-slate-900 border-slate-800 text-slate-200" : "bg-white border-slate-200 text-slate-800"} border py-2 z-50 flex flex-col gap-1`}>
+                  <div className="px-3 py-1 text-[10px] text-slate-400 font-bold border-b border-slate-700/50">{t("reports")}</div>
+                  <button onClick={handleExportPdf} className="w-full text-right px-4 py-1.5 text-xs hover:bg-teal-500/10 hover:text-teal-400">📄 {t("exportPdf")}</button>
+                  <button onClick={handleExportDocx} className="w-full text-right px-4 py-1.5 text-xs hover:bg-teal-500/10 hover:text-teal-400">📝 {t("exportWord")}</button>
+                  <button onClick={handleExportTxt} className="w-full text-right px-4 py-1.5 text-xs hover:bg-teal-500/10 hover:text-teal-400">📋 {t("exportText")}</button>
+                  
+                  <div className="my-1 border-t border-slate-700/50"></div>
+                  
+                  <a href="/settings" className="w-full text-right px-4 py-1.5 text-xs hover:bg-teal-500/10 hover:text-teal-400 block">⚙️ {t("settings")}</a>
+                  <button onClick={toggleTheme} className="w-full text-right px-4 py-1.5 text-xs hover:bg-teal-500/10 hover:text-teal-400 flex items-center gap-2">
+                    {isDark ? "☀ حالت روشن" : "🌙 حالت تاریک"}
+                  </button>
+                  <button onClick={handleClearCurrentChat} className="w-full text-right px-4 py-1.5 text-xs hover:bg-red-500/10 hover:text-red-400">{t("clearHistory")}</button>
+                  <button onClick={handleLogout} className="w-full text-right px-4 py-1.5 text-xs hover:bg-red-500/10 hover:text-red-400">{t("exit")}</button>
+                  <button onClick={NextBack} className="w-full text-right px-4 py-1.5 text-xs hover:bg-teal-500/10 hover:text-teal-400">{t("backToDashboard")}</button>
+                </div>
+              )}
+            </div>
+
           </div>
         </header>
 
@@ -828,38 +891,23 @@ export default function ChatPage() {
           </div>
         )}
 
-        {/* لیست پیام‌ها */}
-        <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 max-w-4xl w-full mx-auto">
+        {/* بخش نمایش پیام‌ها */}
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
           {messages.map((msg, index) => (
-            <div key={index} className={`flex items-end gap-3 group ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
-              
-              {/* آواتار فرستنده */}
-              <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-xs font-bold ${
-                msg.role === "user" 
-                  ? "bg-teal-600 text-white shadow-md shadow-teal-600/20" 
-                  : isDark ? "bg-slate-800 text-teal-400 border border-slate-700" : "bg-slate-200 text-teal-700"
-              }`}>
-                {msg.role === "user" ? "شما" : "نوا"}
-              </div>
-
-              {/* حباب پیام */}
-              <div className={`max-w-[75%] rounded-2xl px-5 py-3.5 text-xs sm:text-sm leading-relaxed shadow-sm ${
+            <div key={index} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+              <div className={`max-w-[85%] md:max-w-[70%] p-4 rounded-2xl text-sm leading-relaxed ${
                 msg.role === "user"
-                  ? "bg-teal-600 text-white rounded-bl-sm"
-                  : isDark 
-                    ? "bg-slate-900 border border-slate-800 text-slate-100 rounded-br-sm" 
-                    : "bg-white border border-slate-200 text-slate-800 rounded-br-sm shadow-sm"
+                  ? "bg-teal-600 text-white rounded-bl-none shadow-md shadow-teal-600/10"
+                  : isDark ? "bg-slate-900 border border-slate-800 text-slate-200 rounded-br-none" : "bg-white border border-slate-200 text-slate-800 rounded-br-none shadow-sm"
               }`}>
                 {msg.content === "typing-indicator" ? (
                   <TypingIndicator isDark={isDark} />
                 ) : (
-                  <div className="space-y-3">
-                    <p className="whitespace-pre-wrap">{msg.content}</p>
-                    {msg.audioUrl && (
-                      <div className="mt-2">
-                        <audio controls src={msg.audioUrl} className="max-w-full h-10 rounded-xl" />
-                      </div>
-                    )}
+                  <div className="whitespace-pre-wrap">{msg.content}</div>
+                )}
+                {msg.audioUrl && (
+                  <div className="mt-2">
+                    <audio controls src={msg.audioUrl} className="w-full h-8" />
                   </div>
                 )}
               </div>
@@ -868,55 +916,43 @@ export default function ChatPage() {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* بخش پیش‌نمایش فایل یا صوت انتخاب شده */}
-        {selectedFilePreviewUrl && (
-          <div className="px-6 py-2">
-            <div className={`max-w-4xl mx-auto p-3 rounded-xl border flex items-center justify-between ${isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"}`}>
-              <div className="flex items-center gap-3">
-                <span className="text-xl">📎</span>
-                <span className="text-xs truncate max-w-xs">{selectedFile?.name || "فایل صوتی ضبط شده"}</span>
-              </div>
-              <button 
-                onClick={clearSelectedFile}
-                className="text-xs text-red-400 hover:text-red-500 font-medium px-2 py-1"
-              >
-                حذف فایل
-              </button>
+        {/* فیلد ورودی و ارسال پیام */}
+        <div className={`p-4 ${isDark ? "bg-slate-900/80 border-slate-800" : "bg-white/80 border-slate-200"} border-t backdrop-blur-xl shrink-0`}>
+          {selectedFilePreviewUrl && (
+            <div className="mb-2 flex items-center gap-2 p-2 rounded-xl bg-slate-800/50 text-xs w-fit">
+              <span>📎 فایل پیوست شده</span>
+              <button onClick={clearSelectedFile} className="text-red-400 hover:text-red-300 font-bold px-1">✕</button>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* نوار پایین برای ارسال پیام */}
-        <div className={`p-4 border-t ${isDark ? "bg-slate-900/80 border-slate-800" : "bg-white/80 border-slate-200"} backdrop-blur-xl shrink-0`}>
-          <form onSubmit={handleSubmit} className="max-w-4xl mx-auto flex items-center gap-3">
+          <form onSubmit={handleSubmit} className="flex items-center gap-2">
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={t("typeMessage")}
-              disabled={isLoading}
-              className={`flex-1 ${isDark ? "bg-slate-950 border-slate-800 text-slate-100 placeholder-slate-500" : "bg-slate-100 border-slate-200 text-slate-800 placeholder-slate-400"} border focus:border-teal-500 text-xs sm:text-sm rounded-2xl px-4 py-3.5 outline-none transition-all`}
+              placeholder={lang === 'fa' ? 'پیام خود را بنویسید...' : 'Type your message...'}
+              className={`flex-1 ${isDark ? "bg-slate-950 border-slate-800 text-slate-100 placeholder-slate-500" : "bg-slate-100 border-slate-200 text-slate-800 placeholder-slate-400"} border focus:border-teal-500 text-xs rounded-2xl px-4 py-3 outline-none`}
             />
 
             <button
               type="button"
               onClick={toggleRecording}
-              className={`p-3.5 rounded-2xl border text-xs transition-all ${
+              className={`p-3 rounded-2xl border transition-all ${
                 isRecording 
-                  ? "bg-red-500/20 border-red-500 text-red-400 animate-pulse" 
-                  : isDark ? "bg-slate-800 border-slate-700 text-slate-300 hover:text-teal-400" : "bg-slate-100 border-slate-200 text-slate-600 hover:text-teal-600"
+                  ? "bg-red-500/20 border-red-500 text-red-500 animate-pulse" 
+                  : isDark ? "bg-slate-800/60 border-slate-700 text-slate-300 hover:text-teal-400" : "bg-slate-100 border-slate-200 text-slate-600 hover:text-teal-600"
               }`}
               title="ضبط صوت"
             >
-              🎤
+              🎙️
             </button>
 
             <button
               type="submit"
               disabled={isLoading || (!input.trim() && !selectedFile)}
-              className="bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-bold px-6 py-3.5 rounded-2xl transition-all text-xs sm:text-sm shadow-lg shadow-teal-500/20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              className="bg-gradient-to-r from-teal-500 to-emerald-400 hover:from-teal-400 hover:to-emerald-300 text-slate-950 font-bold px-5 py-3 rounded-2xl transition-all text-xs disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-teal-500/20"
             >
-              {isLoading ? "..." : t("send")}
+              {lang === 'fa' ? 'ارسال' : 'Send'}
             </button>
           </form>
         </div>
