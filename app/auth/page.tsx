@@ -311,15 +311,20 @@ export default function AuthPage() {
   return (
     <div dir="rtl" className="relative flex h-screen w-screen items-center justify-center bg-[#070b14] text-slate-100 font-sans overflow-hidden px-4">
       
+      {/* 🖼️ تصویر زمینه pic.jpg با افکت کاور و پوشش تیره برای خوانایی بهتر */}
+      <div 
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-40 pointer-events-none"
+        style={{ backgroundImage: `url('/pic.jpg')` }}
+      ></div>
+
+      {/* لایه گرادیان تیره روی تصویر برای تثبیت کنتراست */}
+      <div className="absolute inset-0 bg-gradient-to-br from-[#070b14]/90 via-[#070b14]/75 to-[#070b14]/90 pointer-events-none"></div>
+
       {/* 🔮 عناصر نورانی نئونی پس‌زمینه */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[450px] h-[450px] bg-gradient-to-tr from-teal-500/20 to-emerald-500/15 rounded-full blur-[130px] pointer-events-none animate-pulse"></div>
-      <div className="absolute -bottom-20 right-10 w-[300px] h-[300px] bg-teal-600/15 rounded-full blur-[100px] pointer-events-none"></div>
-
-      {/* 🔲 لایه شبکه مدرن */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b15_1px,transparent_1px),linear-gradient(to_bottom,#1e293b15_1px,transparent_1px)] bg-[size:3rem_3rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] pointer-events-none"></div>
 
       {/* 💳 کارت اصلی ورود */}
-      <div className="relative w-full max-w-md bg-slate-900/70 border border-teal-500/25 rounded-[2.5rem] p-8 md:p-10 shadow-[0_0_50px_rgba(20,184,166,0.12)] backdrop-blur-2xl transition-all duration-300">
+      <div className="relative w-full max-w-md bg-slate-900/75 border border-teal-500/25 rounded-[2.5rem] p-8 md:p-10 shadow-[0_0_50px_rgba(20,184,166,0.12)] backdrop-blur-2xl transition-all duration-300">
         
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/3 h-[2px] bg-gradient-to-r from-transparent via-teal-400 to-transparent shadow-[0_0_10px_#2dd4bf]"></div>
 
