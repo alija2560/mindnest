@@ -95,7 +95,7 @@ export default function ChatPage() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedFilePreviewUrl, setSelectedFilePreviewUrl] = useState<string | null>(null);
