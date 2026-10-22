@@ -1,6 +1,8 @@
 import { cookies } from "next/headers";
 import { LanguageProvider } from "@/app/context/LanguageContext";
 import { Lang } from "@/lib/dictionary";
+import IdleTimeout from "./components/IdleTimeout";
+import PrivacyShield from "./components/PrivacyShield";
 import "./globals.css";
 
 export const metadata = {
@@ -21,7 +23,10 @@ export default async function RootLayout({
     <html lang={currentLang} dir={direction} suppressHydrationWarning>
       <body className="bg-[#06080d] text-slate-100 font-sans antialiased">
         <LanguageProvider defaultLang={currentLang}>
-          {children}
+          <IdleTimeout>
+            <PrivacyShield />
+            {children}
+          </IdleTimeout>
         </LanguageProvider>
       </body>
     </html>

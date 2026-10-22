@@ -4,6 +4,9 @@ import { PrismaClient } from "@prisma/client";
 
 const connectionString = process.env.DATABASE_URL;
 
+// این خط را برای اطمینان اضافه کنید
+console.log("--> DATABASE_URL IS:", connectionString);
+
 const poolConfig: PoolConfig & { family?: number } = {
   connectionString,
   ssl: false,

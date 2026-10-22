@@ -184,6 +184,11 @@ export default function AuthPage() {
   const [timeLeft, setTimeLeft] = useState(120);
   const [canResend, setCanResend] = useState(false);
 
+  // 🔒 وضعیت‌های جدید برای مدیریت قفل ۵ دقیقه‌ای بعد از ۳ بار اشتباه
+  const [attempts, setAttempts] = useState(0);
+  const [isLocked, setIsLocked] = useState(false);
+  const [lockCountdown, setLockCountdown] = useState(300); // ۳۰۰ ثانیه (۵ دقیقه)
+
   useEffect(() => {
     generateAdvancedCaptcha();
   }, []);
@@ -200,7 +205,7 @@ export default function AuthPage() {
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
-    if (step === "otp" && timeLeft > 0) {
+    if (step === "otp" && timeLeft > 0 && !isLocked) {
       timer = setInterval(() => {
         setTimeLeft((prev) => prev - 1);
       }, 1000);
@@ -208,9 +213,29 @@ export default function AuthPage() {
       setCanResend(true);
     }
     return () => clearInterval(timer);
-  }, [step, timeLeft]);
+  }, [step, timeLeft, isLocked]);
+
+  // 🔒 تایمر معکوس برای قفل ۵ دقیقه‌ای
+  useEffect(() => {
+    let lockTimer: NodeJS.Timeout;
+    if (isLocked && lockCountdown > 0) {
+      lockTimer = setInterval(() => {
+        setLockCountdown((prev) => {
+          if (prev <= 1) {
+            setIsLocked(false);
+            setAttempts(0);
+            clearInterval(lockTimer);
+            return 300;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(lockTimer);
+  }, [isLocked, lockCountdown]);
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isLocked) return;
     const val = e.target.value.replace(/\D/g, "");
     const selectedCountry = COUNTRIES.find((c) => c.code === countryCode);
     const maxLen = selectedCountry ? selectedCountry.length : 10;
@@ -225,6 +250,8 @@ export default function AuthPage() {
 
   const handleSendPhone = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLocked) return;
+
     const selectedCountry = COUNTRIES.find((c) => c.code === countryCode);
     const targetLen = selectedCountry ? selectedCountry.length : 10;
 
@@ -270,6 +297,8 @@ export default function AuthPage() {
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLocked) return;
+
     if (!otp || otp.length !== 4) {
       setError("کد تایید باید دقیقاً ۴ رقم باشد.");
       return;
@@ -293,7 +322,23 @@ export default function AuthPage() {
       if (res.ok) {
         window.location.replace("/dashboard");
       } else {
-        setError(data.error || data.message || "کد تایید نادرست است یا منقضی شده است.");
+        // بررسی پاسخ قفل سرور (وضعیت 429)
+        if (res.status === 429 || data.remainingTime) {
+          setIsLocked(true);
+          setLockCountdown(data.remainingTime || 300);
+          setError("به دلیل ۳ بار تلاش ناموفق، حساب شما موقتاً قفل شد.");
+        } else {
+          const newAttempts = attempts + 1;
+          setAttempts(newAttempts);
+
+          if (newAttempts >= 3) {
+            setIsLocked(true);
+            setLockCountdown(300);
+            setError("۳ بار کد اشتباه وارد شد. حساب به مدت ۵ دقیقه قفل شد.");
+          } else {
+            setError(data.error || data.message || `کد تایید نادرست است. ${3 - newAttempts} فرصت دیگر باقی مانده.`);
+          }
+        }
       }
     } catch (err) {
       setError("خطا در ارتباط با سرور.");
@@ -306,6 +351,12 @@ export default function AuthPage() {
     const minutes = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${minutes}:${secs < 10 ? "0" : ""}${secs}`;
+  };
+
+  const formatLockTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
   return (
@@ -344,7 +395,20 @@ export default function AuthPage() {
           </div>
         )}
 
-        {step === "phone" ? (
+        {/* 🔒 اگر حساب قفل بود، تایمر ۵ دقیقه‌ای را نمایش بده */}
+        {isLocked ? (
+          <div className="text-center space-y-4 py-4">
+            <div className="w-14 h-14 mx-auto flex items-center justify-center rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400 text-2xl animate-pulse shadow-inner">
+              🔒
+            </div>
+            <p className="text-xs text-slate-400">
+              به دلیل تلاش‌های ناموفق مکرر، دسترسی موقتاً مسدود شد. لطفاً صبور باشید:
+            </p>
+            <div className="text-3xl font-mono font-black text-rose-400 tracking-wider bg-slate-950/80 border border-rose-500/20 py-3 rounded-2xl shadow-inner">
+              {formatLockTime(lockCountdown)}
+            </div>
+          </div>
+        ) : step === "phone" ? (
           <form onSubmit={handleSendPhone} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-2">شماره موبایل</label>

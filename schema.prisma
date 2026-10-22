@@ -55,16 +55,18 @@ model User {
   theme            String         @default("dark")  
   
   // 🟢 سیستم جدید پیام رایگان (۵۰ پیام کل) و قفل موقت زمان‌‌دار
-  messageCount     Int            @default(0)       // تعداد کل پیام‌های ارسالی رایگان
+  messageCount     Int            @default(0)        // تعداد کل پیام‌های ارسالی رایگان
   lastMessageDate  DateTime       @default(now())
   
   // 🟢 مدیریت اشتراک زمانی نامحدود (۱، ۳، ۶ ماهه)
-  isSubscribed         Boolean    @default(false)   // آیا اشتراک نامحدود فعال دارد؟
-  subscriptionExpiresAt DateTime?                  // تاریخ انقضای اشتراک
-  lockUntil            DateTime?                  // اگر ۵۰ پیام تمام شد، تا چه زمانی قفل است (مثلاً ۲ ساعت بعد)
-
+  isSubscribed          Boolean    @default(false)   // آیا اشتراک نامحدود فعال دارد؟
+  subscriptionExpiresAt DateTime?                    // تاریخ انقضای اشتراک
+  lockUntil             DateTime?                    // اگر ۵۰ پیام تمام شد، تا چه زمانی قفل است
+  
+  // 🛑 فیلدهای جدید برای قفل امنیتی ورود (۳ بار تلاش ناموفق و ۵ دقیقه قفل)
+  failedAttempts        Int        @default(0)       // تعداد خطاهای متوالی در وارد کردن کد OTP
+ 
   hasReceivedFirstBonus Boolean @default(false)
-
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
@@ -81,6 +83,7 @@ model User {
   
   tickets          Ticket[]
 
+  
   customMonthly1Price Int?
   customMonthly3Price Int?
   customMonthly6Price Int?
