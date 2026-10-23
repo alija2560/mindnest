@@ -4,6 +4,15 @@ const nextConfig = {
     // نادیده گرفتن کامل خطاهای تایپ‌سکریپت در زمان بیلد
     ignoreBuildErrors: true,
   },
+  async redirects() {
+    return [
+      {
+        source: "/",
+        destination: "/auth",
+        permanent: false, // ریدایرکت از / به /auth
+      },
+    ];
+  },
   async headers() {
     return [
       {
