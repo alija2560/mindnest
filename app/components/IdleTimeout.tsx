@@ -1,31 +1,32 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 
 export default function IdleTimeout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [showWarning, setShowWarning] = useState(false);
-  const [countdown, setCountdown] = useState(15); // کاهش زمان هشدار برای تست (مثلاً ۱۵ ثانیه)
+  const [countdown, setCountdown] = useState(15);
 
   const warningTimerRef = useRef<NodeJS.Timeout | null>(null);
   const logoutTimerRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
- 
-  const IDLE_TIME_LIMIT = 9 * 10 * 1000; 
-  const WARNING_DURATION = 15 * 1000;
+  
+  // تنظیم روی ۱۰ دقیقه (10 دقیقه * 60 ثانیه * 1000 میلی‌ثانیه)
+  const IDLE_TIME_LIMIT = 10 * 60 * 1000; 
+  const WARNING_DURATION = 15 * 1000; // ۱۵ ثانیه زمان هشدار
 
-  const logoutUser = async () => {
+  const logoutUser = useCallback(async () => {
     try {
       localStorage.clear();
       sessionStorage.clear();
       await fetch("/api/auth/logout", { method: "POST" });
-      router.push("/auth?reason=timeout");
+      router.replace("/auth?reason=timeout"); // استفاده از replace برای جلوگیری از برگشت با Back
       router.refresh();
     } catch (error) {
       console.error("Auto logout error:", error);
     }
-  };
+  }, [router]);
 
   const clearAllTimers = () => {
     if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
@@ -33,7 +34,7 @@ export default function IdleTimeout({ children }: { children: React.ReactNode })
     if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
   };
 
-  const startTimers = () => {
+  const startTimers = useCallback(() => {
     clearAllTimers();
     setShowWarning(false);
     setCountdown(15);
@@ -42,6 +43,8 @@ export default function IdleTimeout({ children }: { children: React.ReactNode })
       setShowWarning(true);
 
       let timeLeft = 15;
+      setCountdown(timeLeft);
+
       countdownIntervalRef.current = setInterval(() => {
         timeLeft -= 1;
         setCountdown(timeLeft);
@@ -55,13 +58,14 @@ export default function IdleTimeout({ children }: { children: React.ReactNode })
       }, WARNING_DURATION);
 
     }, IDLE_TIME_LIMIT);
-  };
+  }, [IDLE_TIME_LIMIT, WARNING_DURATION, logoutUser]);
 
-  const handleUserActivity = () => {
+  const handleUserActivity = useCallback(() => {
+    // اگر مدال هشدار باز نیست، با هر فعالیت کاربر تایمر از نو شروع شود
     if (!showWarning) {
       startTimers();
     }
-  };
+  }, [showWarning, startTimers]);
 
   const stayLoggedIn = () => {
     startTimers(); 
@@ -82,7 +86,7 @@ export default function IdleTimeout({ children }: { children: React.ReactNode })
         window.removeEventListener(event, handleUserActivity);
       });
     };
-  }, []); // 👈 آرایه وابستگی خالی شد تا ایونت‌ها فقط یک‌بار در لود اولیه متصل شوند
+  }, [handleUserActivity, startTimers]);
 
   return (
     <>

@@ -19,6 +19,11 @@ const nextConfig = {
         // اعمال این هدرها روی تمام مسیرهای برنامه
         source: "/:path*",
         headers: [
+          // ۰. جلوگیری از کش شدن صفحات در مرورگر (حیاتی برای امنیت بعد از خروج)
+          {
+            key: "Cache-Control",
+            value: "no-store, max-age=0, must-revalidate",
+          },
           // ۱. جلوگیری از قرار گرفتن سایت در داخل Iframe دیگران (جلوگیری از Clickjacking)
           {
             key: "X-Frame-Options",
