@@ -11,19 +11,19 @@ export default function IdleTimeout({ children }: { children: React.ReactNode })
   const [countdown, setCountdown] = useState(15);
 
   const warningTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const logoutTimerRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const logoutTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   const showWarningRef = useRef(false);
   showWarningRef.current = showWarning;
 
-  const IDLE_TIME_LIMIT = 10 * 60 * 1000; // ۱۰ دقیقه
-  const WARNING_DURATION = 15 * 1000;    // ۱۵ ثانیه
+  const IDLE_TIME_LIMIT = 10 * 60 * 1000; // ۱۰ دقیقه فعالیت نکردن
+  const WARNING_DURATION = 15;            // ۱۵ ثانیه مهلت در مدال هشدار
 
   const clearAllTimers = useCallback(() => {
     if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
-    if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
     if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
   }, []);
 
   const logoutUser = useCallback(async () => {
@@ -39,36 +39,44 @@ export default function IdleTimeout({ children }: { children: React.ReactNode })
     }
   }, [router, clearAllTimers]);
 
-  // تعریف متد شروع تایمر بدون وابستگی‌های متغیر اضافی
   const startTimers = useCallback(() => {
     if (pathname.startsWith("/auth")) return;
 
     clearAllTimers();
     setShowWarning(false);
-    setCountdown(15);
+    setCountdown(WARNING_DURATION);
 
+    // ۱. تایمر ۱۰ دقیقه‌ای برای شروع هشدار
     warningTimerRef.current = setTimeout(() => {
       setShowWarning(true);
-
-      let timeLeft = 15;
+      let timeLeft = WARNING_DURATION;
       setCountdown(timeLeft);
 
+      // ۲. اینتروال معتبر برای کم کردن ثانیه‌ها به صورت دقیق
       countdownIntervalRef.current = setInterval(() => {
         timeLeft -= 1;
         setCountdown(timeLeft);
+
         if (timeLeft <= 0) {
           if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
         }
       }, 1000);
 
+      // ۳. تایمر دقیق ۱۵ ثانیه‌ای برای خروج اضطراری پس از پایان کامل شمارنده
       logoutTimerRef.current = setTimeout(() => {
         logoutUser();
-      }, WARNING_DURATION);
+      }, WARNING_DURATION * 1000);
 
     }, IDLE_TIME_LIMIT);
-  }, [clearAllTimers, logoutUser, pathname]);
+  }, [IDLE_TIME_LIMIT, WARNING_DURATION, logoutUser, clearAllTimers, pathname]);
 
-  // ثبت ایونت‌ها فقط یک‌بار در زمان لود اولیه و تغییر مسیر (Pathname)
+  // دکمه "می‌خواهم بمانم"
+  const stayLoggedIn = () => {
+    clearAllTimers();
+    setShowWarning(false);
+    startTimers();
+  };
+
   useEffect(() => {
     if (pathname.startsWith("/auth")) {
       clearAllTimers();
@@ -76,6 +84,7 @@ export default function IdleTimeout({ children }: { children: React.ReactNode })
     }
 
     const handleUserActivity = () => {
+      // اگر مدال هشدار باز نباشد، با حرکت کاربر تایمر ۱۰ دقیقه ریست می‌شود
       if (!showWarningRef.current) {
         startTimers();
       }
@@ -126,7 +135,7 @@ export default function IdleTimeout({ children }: { children: React.ReactNode })
               </button>
               
               <button
-                onClick={startTimers}
+                onClick={stayLoggedIn}
                 className="flex-1 px-4 py-2 text-sm font-medium bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl transition shadow-lg shadow-emerald-600/20"
               >
                 می‌خواهم بمانم
