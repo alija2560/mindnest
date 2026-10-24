@@ -14,7 +14,6 @@ export default function IdleTimeout({ children }: { children: React.ReactNode })
   const logoutTimerRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
-  // استفاده از ref برای showWarning تا درون Listenerها مشکل Stale Closure پیش نیاید
   const showWarningRef = useRef(false);
   showWarningRef.current = showWarning;
 
@@ -40,8 +39,8 @@ export default function IdleTimeout({ children }: { children: React.ReactNode })
     }
   }, [router, clearAllTimers]);
 
+  // تعریف متد شروع تایمر بدون وابستگی‌های متغیر اضافی
   const startTimers = useCallback(() => {
-    // اگر کاربر در صفحه لاگین است، تایمر عدم فعالیت اجرا نشود
     if (pathname.startsWith("/auth")) return;
 
     clearAllTimers();
@@ -67,17 +66,16 @@ export default function IdleTimeout({ children }: { children: React.ReactNode })
       }, WARNING_DURATION);
 
     }, IDLE_TIME_LIMIT);
-  }, [IDLE_TIME_LIMIT, WARNING_DURATION, logoutUser, clearAllTimers, pathname]);
+  }, [clearAllTimers, logoutUser, pathname]);
 
+  // ثبت ایونت‌ها فقط یک‌بار در زمان لود اولیه و تغییر مسیر (Pathname)
   useEffect(() => {
-    // در صفحه ورود نیازی به شنود ایونت‌ها نیست
     if (pathname.startsWith("/auth")) {
       clearAllTimers();
       return;
     }
 
     const handleUserActivity = () => {
-      // فقط زمانی که مدال هشدار نمایش داده نشده باشد، تایمر ۱۰ دقیقه‌ای از نو شروع می‌شود
       if (!showWarningRef.current) {
         startTimers();
       }
