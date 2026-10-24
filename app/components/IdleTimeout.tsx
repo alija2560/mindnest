@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 export default function IdleTimeout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
+  
   const [showWarning, setShowWarning] = useState(false);
   const [countdown, setCountdown] = useState(15);
 
@@ -12,29 +14,36 @@ export default function IdleTimeout({ children }: { children: React.ReactNode })
   const logoutTimerRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
-  // تنظیم روی ۱۰ دقیقه (10 دقیقه * 60 ثانیه * 1000 میلی‌ثانیه)
-  const IDLE_TIME_LIMIT = 10 * 60 * 1000; 
-  const WARNING_DURATION = 15 * 1000; // ۱۵ ثانیه زمان هشدار
+  // استفاده از ref برای showWarning تا درون Listenerها مشکل Stale Closure پیش نیاید
+  const showWarningRef = useRef(false);
+  showWarningRef.current = showWarning;
+
+  const IDLE_TIME_LIMIT = 10 * 60 * 1000; // ۱۰ دقیقه
+  const WARNING_DURATION = 15 * 1000;    // ۱۵ ثانیه
+
+  const clearAllTimers = useCallback(() => {
+    if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
+    if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
+    if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+  }, []);
 
   const logoutUser = useCallback(async () => {
+    clearAllTimers();
     try {
       localStorage.clear();
       sessionStorage.clear();
       await fetch("/api/auth/logout", { method: "POST" });
-      router.replace("/auth?reason=timeout"); // استفاده از replace برای جلوگیری از برگشت با Back
+      router.replace("/auth?reason=timeout");
       router.refresh();
     } catch (error) {
       console.error("Auto logout error:", error);
     }
-  }, [router]);
-
-  const clearAllTimers = () => {
-    if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
-    if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
-    if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
-  };
+  }, [router, clearAllTimers]);
 
   const startTimers = useCallback(() => {
+    // اگر کاربر در صفحه لاگین است، تایمر عدم فعالیت اجرا نشود
+    if (pathname.startsWith("/auth")) return;
+
     clearAllTimers();
     setShowWarning(false);
     setCountdown(15);
@@ -58,24 +67,26 @@ export default function IdleTimeout({ children }: { children: React.ReactNode })
       }, WARNING_DURATION);
 
     }, IDLE_TIME_LIMIT);
-  }, [IDLE_TIME_LIMIT, WARNING_DURATION, logoutUser]);
-
-  const handleUserActivity = useCallback(() => {
-    // اگر مدال هشدار باز نیست، با هر فعالیت کاربر تایمر از نو شروع شود
-    if (!showWarning) {
-      startTimers();
-    }
-  }, [showWarning, startTimers]);
-
-  const stayLoggedIn = () => {
-    startTimers(); 
-  };
+  }, [IDLE_TIME_LIMIT, WARNING_DURATION, logoutUser, clearAllTimers, pathname]);
 
   useEffect(() => {
+    // در صفحه ورود نیازی به شنود ایونت‌ها نیست
+    if (pathname.startsWith("/auth")) {
+      clearAllTimers();
+      return;
+    }
+
+    const handleUserActivity = () => {
+      // فقط زمانی که مدال هشدار نمایش داده نشده باشد، تایمر ۱۰ دقیقه‌ای از نو شروع می‌شود
+      if (!showWarningRef.current) {
+        startTimers();
+      }
+    };
+
     const events = ["mousemove", "keydown", "click", "scroll", "touchstart"];
 
     events.forEach((event) => {
-      window.addEventListener(event, handleUserActivity);
+      window.addEventListener(event, handleUserActivity, { passive: true });
     });
 
     startTimers();
@@ -86,13 +97,13 @@ export default function IdleTimeout({ children }: { children: React.ReactNode })
         window.removeEventListener(event, handleUserActivity);
       });
     };
-  }, [handleUserActivity, startTimers]);
+  }, [pathname, startTimers, clearAllTimers]);
 
   return (
     <>
       {children}
 
-      {showWarning && (
+      {showWarning && !pathname.startsWith("/auth") && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
           <div className="w-full max-w-md p-6 bg-[#0d1117] border border-slate-800 rounded-2xl shadow-2xl text-center space-y-4">
             <div className="w-12 h-12 mx-auto flex items-center justify-center rounded-full bg-amber-500/10 text-amber-500 font-bold text-xl">
@@ -117,7 +128,7 @@ export default function IdleTimeout({ children }: { children: React.ReactNode })
               </button>
               
               <button
-                onClick={stayLoggedIn}
+                onClick={startTimers}
                 className="flex-1 px-4 py-2 text-sm font-medium bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl transition shadow-lg shadow-emerald-600/20"
               >
                 می‌خواهم بمانم

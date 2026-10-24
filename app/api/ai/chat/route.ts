@@ -8,18 +8,35 @@ import path from "path";
 // 🚀 تنظیم Base URL به پروکسی Vercel برای عبور از تحریم و خطای ۴۰۳
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY || "dummy",
-  baseURL: "https://nava-vercel-proxy.vercel.app", // آدرس پروکسی Vercel شما
+  baseURL: "https://nava-vercel-proxy.vercel.app",
 });
 
+// سیستم‌پرامپت جامع و حرفه‌ای «نوا» با لحاظ کردن لحن‌های مختلف و قوانین سخت‌گیرانه تعاملی
 const getSystemPrompt = (tone: string = "friendly") => {
+  const baseRules = `
+[CRITICAL SYSTEM RULES - NON-NEGOTIABLE]
+تو "نوا" (Nava) هستی؛ یک منتور ارشد، تحلیل‌گر رفتار و مشاور تخصصی در حوزه روانشناسی کاربردی، خودشناسی و سلامت روان. هدف تو یک گفتگوی طولانی، گام‌به‌گام و تعاملی است، نه دادن پاسخ‌های طولانی یا کلی‌گویی در یک پیام.
+
+قوانین سخت‌گیرانه پاسخ‌دهی:
+1. قانون قطعی «تک‌سوال» (Single Question Rule): در انتهای هر پیام تحت هیچ شرایطی بیش از «یک» سوال نپرس. از لیست کردن سوالات یا شماره‌گذاری خودداری کن تا پاسخ دادن برای کاربر ساده باشد.
+2. پیشروی گام‌به‌گام (Micro-Interactions): از متن‌های طولانی و کلی‌گویی پرهیز کن. کل مسئله را یک‌جا حل نکن؛ در هر پیام فقط روی ۱ نکته یا ۱ گام کوچک تمرکز کن. حجم کل پیام حداکثر ۴ تا ۵ خط باشد.
+3. تحلیل شخصیتی و بازتاب: الگوهای فکری، خطاهای شناختی و تیپ شخصیتی کاربر را به مرور رصد کرده و محترمانه بازتاب بده.
+4. سیاست داده‌ها: در صورت لزوم به کاربر یادآوری کن که گفتگوها پس از ۴۸ ساعت به صورت خودکار پاک می‌شوند و می‌تواند در صورت نیاز خروجی بگیرد.
+
+ساختار استاندارد پاسخ (حداکثر ۳ بخش کوتاه):
+1. بازخورد و همدلی کوتاه (۱ تا ۲ جمله)
+2. بینش روانشناسی یا راهکار ریز (۱ تا ۲ جمله)
+3. دقیقاً «یک» سوال دقیق و هدفمند برای گام بعدی.
+`;
+
   switch (tone) {
     case "formal":
-      return "تو «نوا» هستی؛ یک دستیار هوشمند با لحنی رسمی، دقیق، حرفه‌ای و ساختاریافته به زبان فارسی پاسخ بده.";
+      return `${baseRules}\nلحن کاربر: رسمی، دقیق، حرفه‌ای و ساختاریافته به زبان فارسی.`;
     case "concise":
-      return "تو «نوا» هستی؛ یک دستیار هوشمند با لحنی بسیار کوتاه، مقتصد، بدون حاشیه و مستقیم به زبان فارسی پاسخ بده.";
+      return `${baseRules}\nلحن کاربر: بسیار کوتاه، مقتصد، بدون حاشیه و مستقیم به زبان فارسی.`;
     case "friendly":
     default:
-      return "تو «نوا» هستی؛ پناهگاه امن ذهن، همدم و گوش شنوای کاربر با لحنی بسیار صمیمی، همدلانه، گرم و پر از آرامش به زبان فارسی پاسخ بده.";
+      return `${baseRules}\nلحن کاربر: بسیار صمیمی، همدلانه، گرم، آرامش‌بخش و پر از آرامش به زبان فارسی.`;
   }
 };
 
@@ -84,12 +101,11 @@ export async function POST(req: Request) {
     // ۱. بررسی اشتراک زمانی فعال (نامحدود در تعداد پیام)
     const hasActiveSubscription = user.isSubscribed && user.subscriptionExpiresAt && new Date(user.subscriptionExpiresAt) > now;
 
-    // ۲. اگر اشتراک فعال نداشت، بررسی سهمیه پیام‌های رایگان و قفل موقت
+    // ۲. بررسی سهمیه پیام‌های رایگان
     if (!hasActiveSubscription) {
       const FREE_LIMIT = 10;
 
       if (user.messageCount >= FREE_LIMIT) {
-        // الف) بررسی اینکه آیا کاربر در حال حاضر در بازه قفل موقت قرار دارد یا خیر
         if (user.lockUntil && new Date(user.lockUntil) > now) {
           const remainingTimeMs = new Date(user.lockUntil).getTime() - now.getTime();
           const remainingMinutes = Math.ceil(remainingTimeMs / (1000 * 60));
@@ -102,14 +118,13 @@ export async function POST(req: Request) {
             { 
               error: "TEMPORARY_LOCKED", 
               code: "TEMPORARY_LOCKED",
-              message: `سهمیه ۱۰ پیام رایگان شما به اتمام رسیده است. ${lockText} دیگر می‌توانید پیام بعدی را ارسال کنید، یا برای ادامه گفتگو به صورت نامحدود و بدون معطلی، یکی از بسته‌های اشتراک را تهیه کنید.`,
+              message: `سهمیه ۱۰ پیام رایگان شما به اتمام رسیده است. ${lockText} دیگر می‌توانید پیام بعدی را ارسال کنید، یا برای ادامه گفتگو به صورت نامحدود، یکی از بسته‌های اشتراک را تهیه کنید.`,
               lockUntil: user.lockUntil
             }, 
             { status: 403 }
           );
         } else {
-          // ب) اگر زمان قفل تمام شده باشد، اجازه ارسال ۱ پیام داده می‌شود 
-          const nextLockTime = new Date(now.getTime() + 2 * 60 * 60 * 1000); // قفل ۲ ساعته
+          const nextLockTime = new Date(now.getTime() + 2 * 60 * 60 * 1000);
           await prisma.user.update({
             where: { id: userId },
             data: { lockUntil: nextLockTime }
@@ -134,7 +149,7 @@ export async function POST(req: Request) {
     let audioUrl = null;
     let transcribedText = "";
 
-    // ۳. ذخیره فایل صوتی روی سرور و تبدیل با مدل Whisper از طریق پروکسی
+    // ۳. ذخیره و ترجمه صوت با Whisper
     if (targetAudio && targetAudio.size > 0) {
       const bytes = await targetAudio.arrayBuffer();
       const buffer = Buffer.from(bytes);
@@ -150,7 +165,6 @@ export async function POST(req: Request) {
       }
 
       try {
-        console.log("🎙️ Sending audio to Whisper via Proxy...");
         const transcription = await groq.audio.transcriptions.create({
           file: targetAudio,
           model: "whisper-large-v3",
@@ -158,19 +172,15 @@ export async function POST(req: Request) {
         });
 
         transcribedText = transcription.text ? transcription.text.trim() : "";
-        console.log("✨ Transcribed Text Result:", transcribedText);
       } catch (transError: any) {
         console.error("❌ Whisper transcription error:", transError?.message || transError);
       }
     }
 
-    // ۴. ترکیب متن صوتی به عنوان متنِ اصلی در زیر صوت
     let userMessageContent = message;
     if (targetAudio) {
       if (transcribedText) {
-        userMessageContent = message 
-          ? `${message}\n\n💬 ${transcribedText}` 
-          : `💬 ${transcribedText}`;
+        userMessageContent = message ? `${message}\n\n💬 ${transcribedText}` : `💬 ${transcribedText}`;
       } else {
         userMessageContent = message || "🎤 [پیام صوتی]";
       }
@@ -188,7 +198,7 @@ export async function POST(req: Request) {
       conversationId = newConv.id;
     }
 
-    // ۵. ذخیره پیام کاربر در دیتابیس
+    // ذخیره پیام کاربر
     await prisma.message.create({
       data: { 
         conversationId, 
@@ -198,7 +208,7 @@ export async function POST(req: Request) {
       },
     });
 
-    // دریافت تاریخچه و محدود کردن آن به ۱۰ پیام آخر جهت جلوگیری از خطای کمبود توکن (Rate Limit)
+    // دریافت تاریخچه (۱۰ پیام آخر برای حفظ زمینه و رعایت نرخ توکن)
     const allMessages = await prisma.message.findMany({
       where: { conversationId },
       orderBy: { createdAt: "asc" },
@@ -213,18 +223,19 @@ export async function POST(req: Request) {
 
     const systemPromptText = getSystemPrompt(userTone);
 
-  const chatCompletion = await groq.chat.completions.create({
-    messages: [
-      {
-        role: "system",
-        content: systemPromptText,
-      },
-      ...formattedHistory,
-    ],
-    model: "openai/gpt-oss-120b",
-    temperature: 0.7,
-  });
-   const aiResponseText = chatCompletion.choices[0]?.message?.content || "متوجه شدم، کمی بیشتر توضیح می‌دهی؟";
+    const chatCompletion = await groq.chat.completions.create({
+      messages: [
+        {
+          role: "system",
+          content: systemPromptText,
+        },
+        ...formattedHistory,
+      ],
+      model: "openai/gpt-oss-120b",
+      temperature: 0.3, // 👈 کاهش دمانس برای تبعیت دقیق‌تر از قوانین تک‌سوال و کوتاه‌گویی
+    });
+
+    const aiResponseText = chatCompletion.choices[0]?.message?.content || "متوجه شدم، کمی بیشتر توضیح می‌دهی؟";
 
     await prisma.message.create({
       data: { conversationId, sender: "assistant", content: aiResponseText },
@@ -235,7 +246,6 @@ export async function POST(req: Request) {
       data: { updatedAt: new Date() },
     });
 
-    // ۶. افزایش شمارنده پیام‌های کاربر (فقط در صورت نداشتن اشتراک فعال)
     let updatedMessageCount = user.messageCount;
     if (!hasActiveSubscription) {
       updatedMessageCount += 1;
