@@ -17,8 +17,8 @@ export default function IdleTimeout({ children }: { children: React.ReactNode })
   const showWarningRef = useRef(false);
   showWarningRef.current = showWarning;
 
-  const IDLE_TIME_LIMIT = 10 * 60 * 1000; // ۱۰ دقیقه فعالیت نکردن
-  const WARNING_DURATION = 15;            // ۱۵ ثانیه مهلت در مدال هشدار
+  const IDLE_TIME_LIMIT = 15 * 60 * 1000; // افزایش زمان به ۱۵ دقیقه برای راحتی کامل کاربر در چت‌های طولانی
+  const WARNING_DURATION = 20;            // ۲۰ ثانیه مهلت در مدال هشدار
 
   const clearAllTimers = useCallback(() => {
     if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
@@ -46,13 +46,13 @@ export default function IdleTimeout({ children }: { children: React.ReactNode })
     setShowWarning(false);
     setCountdown(WARNING_DURATION);
 
-    // ۱. تایمر ۱۰ دقیقه‌ای برای شروع هشدار
+    // ۱. تایمر عدم فعالیت برای شروع هشدار
     warningTimerRef.current = setTimeout(() => {
       setShowWarning(true);
       let timeLeft = WARNING_DURATION;
       setCountdown(timeLeft);
 
-      // ۲. اینتروال معتبر برای کم کردن ثانیه‌ها به صورت دقیق
+      // ۲. شمارش معکوس در مدال هشدار
       countdownIntervalRef.current = setInterval(() => {
         timeLeft -= 1;
         setCountdown(timeLeft);
@@ -62,7 +62,7 @@ export default function IdleTimeout({ children }: { children: React.ReactNode })
         }
       }, 1000);
 
-      // ۳. تایمر دقیق ۱۵ ثانیه‌ای برای خروج اضطراری پس از پایان کامل شمارنده
+      // ۳. خروج خودکار پس از پایان کامل زمان هشدار
       logoutTimerRef.current = setTimeout(() => {
         logoutUser();
       }, WARNING_DURATION * 1000);
@@ -84,13 +84,14 @@ export default function IdleTimeout({ children }: { children: React.ReactNode })
     }
 
     const handleUserActivity = () => {
-      // اگر مدال هشدار باز نباشد، با حرکت کاربر تایمر ۱۰ دقیقه ریست می‌شود
+      // اگر مدال هشدار باز نباشد، با هر فعالیت (کلیک، اسکرول، تایپ، ارسال پیام) تایمر ریست می‌شود
       if (!showWarningRef.current) {
         startTimers();
       }
     };
 
-    const events = ["mousemove", "keydown", "click", "scroll", "touchstart"];
+    // اضافه کردن ایونت‌های کامل‌تر شامل ارسال فرم و کلیک روی دکمه‌ها
+    const events = ["mousedown", "keydown", "scroll", "touchstart", "submit", "click"];
 
     events.forEach((event) => {
       window.addEventListener(event, handleUserActivity, { passive: true });

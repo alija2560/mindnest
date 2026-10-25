@@ -81,7 +81,7 @@ export async function GET(req: Request) {
   }
 }
 
-// ثبت پیام جدید (بدون هیچ‌گونه محدودیت سهمیه یا قفل)
+// ثبت پیام جدید
 export async function POST(req: Request) {
   try {
     const cookieStore = await cookies();
@@ -94,6 +94,43 @@ export async function POST(req: Request) {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    const now = new Date();
+
+    // ۱. بررسی اشتراک زمانی فعال (نامحدود در تعداد پیام)
+    const hasActiveSubscription = user.isSubscribed && user.subscriptionExpiresAt && new Date(user.subscriptionExpiresAt) > now;
+
+    // ۲. بررسی سهمیه پیام‌های رایگان
+    if (!hasActiveSubscription) {
+      const FREE_LIMIT = 10;
+
+      if (user.messageCount >= FREE_LIMIT) {
+        if (user.lockUntil && new Date(user.lockUntil) > now) {
+          const remainingTimeMs = new Date(user.lockUntil).getTime() - now.getTime();
+          const remainingMinutes = Math.ceil(remainingTimeMs / (1000 * 60));
+          const hours = Math.floor(remainingMinutes / 60);
+          const minutes = remainingMinutes % 60;
+          
+          let lockText = hours > 0 ? `${hours} ساعت و ${minutes} دقیقه` : `${minutes} دقیقه`;
+
+          return NextResponse.json(
+            { 
+              error: "TEMPORARY_LOCKED", 
+              code: "TEMPORARY_LOCKED",
+              message: `سهمیه ۱۰ پیام رایگان شما به اتمام رسیده است. ${lockText} دیگر می‌توانید پیام بعدی را ارسال کنید، یا برای ادامه گفتگو به صورت نامحدود، یکی از بسته‌های اشتراک را تهیه کنید.`,
+              lockUntil: user.lockUntil
+            }, 
+            { status: 403 }
+          );
+        } else {
+          const nextLockTime = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+          await prisma.user.update({
+            where: { id: userId },
+            data: { lockUntil: nextLockTime }
+          });
+        }
+      }
     }
 
     const formData = await req.formData();
@@ -112,7 +149,7 @@ export async function POST(req: Request) {
     let audioUrl = null;
     let transcribedText = "";
 
-    // ذخیره و ترجمه صوت با Whisper
+    // ۳. ذخیره و ترجمه صوت با Whisper
     if (targetAudio && targetAudio.size > 0) {
       const bytes = await targetAudio.arrayBuffer();
       const buffer = Buffer.from(bytes);
@@ -171,7 +208,7 @@ export async function POST(req: Request) {
       },
     });
 
-    // دریافت تاریخچه (۱۰ پیام آخر برای حفظ زمینه)
+    // دریافت تاریخچه (۱۰ پیام آخر برای حفظ زمینه و رعایت نرخ توکن)
     const allMessages = await prisma.message.findMany({
       where: { conversationId },
       orderBy: { createdAt: "asc" },
@@ -195,7 +232,7 @@ export async function POST(req: Request) {
         ...formattedHistory,
       ],
       model: "openai/gpt-oss-120b",
-      temperature: 0.3, // پایین آوردن دما برای دقت بالا در اجرای قانون تک‌سوال
+      temperature: 0.3, // 👈 کاهش دمانس برای تبعیت دقیق‌تر از قوانین تک‌سوال و کوتاه‌گویی
     });
 
     const aiResponseText = chatCompletion.choices[0]?.message?.content || "متوجه شدم، کمی بیشتر توضیح می‌دهی؟";
@@ -209,9 +246,25 @@ export async function POST(req: Request) {
       data: { updatedAt: new Date() },
     });
 
+    let updatedMessageCount = user.messageCount;
+    if (!hasActiveSubscription) {
+      updatedMessageCount += 1;
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          messageCount: updatedMessageCount,
+          lastMessageDate: new Date(),
+        },
+      });
+    }
+
+    const remainingFree = hasActiveSubscription ? 999 : Math.max(0, 10 - updatedMessageCount);
+
     return NextResponse.json({
       conversationId,
       response: aiResponseText,
+      remainingFree: remainingFree,
+      isSubscribed: hasActiveSubscription,
       transcribedText: transcribedText,
     }, { status: 200 });
 
