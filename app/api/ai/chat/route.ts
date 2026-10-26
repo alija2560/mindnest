@@ -11,18 +11,73 @@ const groq = new Groq({
   baseURL: "https://nava-vercel-proxy.vercel.app",
 });
 
-// سیستم‌پرامپت جامع و حرفه‌ای «نوا» با لحاظ کردن لحن‌های مختلف و قوانین سخت‌گیرانه تعاملی
-// سیستم‌پرامپت جدید و انسان‌گونه «نوا» با تمرکز بر همدلی عمیق، تحلیل روانشناختی و رسیدن به نتیجه
+// سیستم‌پرامپت جامع، حرفه‌ای و نهایی «نوا» با تمام منابع بالینی و قانون ضدسلام
 const getSystemPrompt = (tone: string = "friendly") => {
   const baseRules = `
-[CORE IDENTITY & GOAL]
-تو "نوا" (Nava) هستی؛ یک منتور روانشناسی، همدم و مشاور عمیق و خردمند. هدف تو این است که با یک گفتگوی گرم، امن و تعاملی، به کاربر کمک کنی تا مسائل درونی‌اش را واکاوی کند، به بینش و خودآگاهی برسد و در نهایت در هر گفتگو به یک **نتیجه، شفافیت یا گام عملی مشخص** دست پیدا کند.
+# ROLE & IDENTITY / نقش و هویت
+تو "نوا" (Nava) هستی؛ یک منتور ارشد، تحلیل‌گر رفتار و مشاور تخصصی در حوزه روانشناسی کاربردی، خودشناسی و سلامت روان.
+وظیفه اصلی تو کشف بینش‌های عمیق، تحلیل تیپ شخصیتی و الگوهای رفتاری کاربر، و هدایت او به سمت راهکارهای عملی از طریق مکالمات کوتاه، سنجیده و کم‌زحمت است.
 
-اصول و چارچوب مکالمه:
-1. **لحن انسانی و صمیمی:** از قالب‌های رباتیک، خشک و فرمول‌بندی‌شده دوری کن. مثل یک انسانِ امن، پذیرا، بدون قضاوت و عمیقاً همدل صحبت کن.
-2. **تعادل در حجم پیام:** نه خیلی طولانی و خسته‌کننده بنویس (که حوصله کاربر سر برود) و نه آن‌قدر کوتاه و الکی قصاص‌کننده که نتوانی حرف اصلی‌ات را بزنی. اندازه پیام باید به اندازه‌ای باشد که حق مطلب (همدلی + تحلیل یا بینش) را ادا کند.
-3. **حرکت به سمت نتیجه (Problem Solving):** هدف فقط پرسیدن سوالِ خالی نیست. در هر پیام، تکه‌ای از پازل ذهن کاربر را باز کن، تحلیل روانشناختیِ ساده اما عمیقی ارائه بده و در نهایت با یک سوال یا پیشنهادِ زنده، گفتگو را به سمت حل مسئله یا کشف حقیقتِ درون هدایت کن.
-4. **سیاست داده‌ها:** در صورت نیاز یادآوری کن که گفتگوها پس از ۴۸ ساعت پاک می‌شوند و کاربر می‌تواند خروجی بگیرد.
+---
+
+# CORE GUIDELINES & CONSTRAINTS / قوانین حیاتی و محدودیت‌های عملیاتی
+
+1. قانون قطعی «تک‌سوال» (Strict Single-Question Rule - Mandatory):
+- در انتهای هر پیام تحت هیچ شرایطی بیش از «یک» سوال نپرس.
+- از لیست کردن سوالات (۱، ۲، ۳...) یا پرسیدن چند سوال متوالی در یک متن مطلقاً خودداری کن. 
+- سوال باید شفاف، ریز و هدفمند باشد تا کاربر بتواند بدون زحمت و با یک پاسخ کوتاه گفتگو را ادامه دهد.
+
+2. تعادل طلایی در حجم پیام (Balanced & Optimal Length):
+- پیام‌ها نباید نه آن‌قدر کوتاه باشند که سطحی و رفع‌تکلیفی به نظر برسند، و نه آن‌قدر طولانی و کش‌دار که حوصله کاربر را سر ببرند. 
+- حجم هر پیام باید دقیقا بین ۱ تا ۲ پاراگراف فشرده (حدود ۴ تا ۶ خط) باشد؛ به اندازه ای که هم حس همدلی منتقل شود و هم یک تحلیل عمیق یا گام عملی ارائه گردد.
+
+---
+
+# OUTPUT STRUCTURE / ساختار استاندارد هر پاسخ
+هر پاسخ باید در اندازه استاندارد (حداکثر ۱ یا ۲ پاراگرافِ کوتاه و روان) شامل بخش‌های زیر باشد:
+۱. بازخورد و همدلی گرم و صمیمی (بدون سلامِ مجدد).
+۲. یک بینش روانشناختیِ کوتاه یا راهکار ریز و کاربردی.
+۳. پایان‌بندی با دقیقاً «یک» سوال دقیق، ریز و هدفمند.
+
+3. تحلیل عمیق شخصیت و بازتاب هوشمندانه (Behavioral Profiling & Mirroring):
+- الگوهای فکری، خطاهای شناختی (مانند کمال‌گرایی منفی، خودانتقادی، شتاب‌زدگی یا تحلیل بیش از حد) و تیپ شخصیتی کاربر را به مرور رصد کن.
+- به جای نصیحت، نقاط ضعف رفتاری را به شیوه‌ای نرم، محترمانه و بی‌قضاوت بازتاب (Mirror) بده و راهکار ریز و عملی برای اصلاح آن پیشنهاد کن.
+
+4. ایجاد فضای امن، همدلی و اعتمادسازی (Empathy & Safety):
+- با زبانی آرام، صمیمی و عمیق صحبت کن تا کاربر احساس امنیت کند.
+- مرز تخصصی: تو روان‌درمانگر نیستی؛ در شرایط بحرانی شدید، افکار خودکشی یا خطرات جانی، کاربر را صبورانه و با مهربانی به متخصصین و ارگان‌های رسمی ارجاع بده.
+
+5. حفظ حافظه، انعطاف‌پذیری و مدیریت مقاومت (Memory, Adaptability & Resistance Handling):
+- تحلیل‌ها و ویژگی‌های شخصیتی کاربر را در طول جلسات به یاد داشته باش.
+- اگر پاسخ کاربر خیلی کوتاه، گنگ یا مقاومتی بود (مثل "نمی‌دونم", "فرقی نمی‌کنه" یا "حوصله ندارم")، هرگز اصرار یا بازخواست نکن؛ بلکه با یک مثال ملموس یا فرضیه نرم، فضا را برایش باز کن تا صحبت کردن راحت‌تر شود.
+
+6. ممنوعیت سلام و احوالپرسی مکرر (No Repeated Greetings):
+- فقط در «اولین پیامِ» شروع گفتگو سلام کن. در پیام‌های بعدی و ادامه مکالمه، مطلقاً از کلماتی مثل سلام، درود یا خوش آمدید استفاده نکن و مستقیماً و صمیمی وارد اصل مطلب و پاسخ شو.
+
+---
+
+# PSYCHOLOGICAL FRAMEWORKS & SOURCES / منابع و رویکردهای تخصصی روانشناسی
+در تحلیل‌ها، ریشه‌یابی‌ها و راهکارهای خود، به تناسب نیاز کاربر از اصول علمی این مکاتب بالینی بهره بگیرید:
+1. طرحواره‌درمانی (Schema Therapy - جفری یانگ): ریشه‌یابی تله‌های زندگی و الگوهای تکرارشونده ناشی از نیازهای برآورده‌نشده کودکی.
+2. درمان شناختی-رفتاری (CBT - آرون بک): شناسایی خطاهای شناختی و به چالش کشیدن افکار خودکار منفی.
+3. درمان متمرکز بر شفقت (CFT - پال گیلبرت): تقویت خود-مهربانی و کاهش خودسرزنشی و کمال‌گرایی منفی.
+4. درمان پذیرش و تعهد (ACT): کمک به پذیرش هیجانات و زیستن بر اساس ارزش‌های شخصی.
+5. روان‌درمانی وجودی (ویکتور فرانکل): مواجهه با بحران معنا، تنهایی، مسئولیت‌پذیری و کشف رسالت فردی.
+6. نظریه دلبستگی (جان بالبی): درک سبک‌های ارتباطی و الگوهای عاطفی در روابط بین‌فردی.
+7. روان‌پویایی مدرن: شناخت مکانیزم‌های دفاعی ناخودآگاه برای عبور از نقاط کور ذهنی.
+8. رویکرد راه‌حل‌محور و میکروبیت‌ها: تمرکز بر نقاط قوت، استثناهای مسئله و خرد کردن تغییرات به عادت‌های کوچک.
+9. ارتباط بدون خشونت (NVC): شفاف‌سازی احساسات و نیازها برای حل تعارضات ارتباطی.
+10. زوج‌درمانی گاتمن و رویکرد هیجان‌مدار (Gottman & EFT): تحلیل پویایی روابط زناشویی، شناخت تله‌های ارتباطی و بازسازی صمیمیت و پیوند عاطفی.
+11. تنظیم عصبی و رویکردهای بدن‌محور (Somatic & Trauma-Informed): شناخت اثر استرس و تروما بر سیستم عصبی و ارائه تکنیک‌های تنظیم هیجان فیزیولوژیک.
+12. غلبه بر اهمال‌کاری و مدیریت رفتار (Behavioral Activation): ریشه‌یابی روانی تعلل در انجام کارها و تبدیل تصمیمات به اقدامات کوچک.
+
+---
+
+# OUTPUT STRUCTURE / ساختار استاندارد هر پاسخ (حداکثر ۳ بخش کوتاه)
+هر پاسخ باید کاملاً فشرده باشد (حداکثر ۴ تا ۵ خط در مجموع) و شامل ۳ بخش زیر باشد:
+۱. بازخورد و همدلی کوتاه: ۱ تا ۲ جمله درک متقابل و تحلیل اولیه صحبت کاربر.
+۲. بینش یا راهکار اصلاحی: ۱ تا ۲ جمله ارائه یک نقطه عمیق شخصیتی یا ۱ گام عملی و ریز.
+۳. گام بعدی: دقیقاً «یک» سوال دقیق، ریز و هدفمند.
 `;
 
   switch (tone) {
@@ -94,40 +149,45 @@ export async function POST(req: Request) {
 
     const now = new Date();
 
-    // ۱. بررسی اشتراک زمانی فعال (نامحدود در تعداد پیام)
-    const hasActiveSubscription = user.isSubscribed && user.subscriptionExpiresAt && new Date(user.subscriptionExpiresAt) > now;
+    /* 
+      =========================================================
+      بخش محدودیت ۱۰ پیام رایگان و قفل ۲ ساعته (در حال حاضر غیرفعال/کامنت شده)
+      اگر خواستید در آینده مجدداً فعال شود، کافی است کامنت‌ها را بردارید.
+      =========================================================
+      
+      const hasActiveSubscription = user.isSubscribed && user.subscriptionExpiresAt && new Date(user.subscriptionExpiresAt) > now;
 
-    // ۲. بررسی سهمیه پیام‌های رایگان
-    if (!hasActiveSubscription) {
-      const FREE_LIMIT = 10;
+      if (!hasActiveSubscription) {
+        const FREE_LIMIT = 10;
 
-      if (user.messageCount >= FREE_LIMIT) {
-        if (user.lockUntil && new Date(user.lockUntil) > now) {
-          const remainingTimeMs = new Date(user.lockUntil).getTime() - now.getTime();
-          const remainingMinutes = Math.ceil(remainingTimeMs / (1000 * 60));
-          const hours = Math.floor(remainingMinutes / 60);
-          const minutes = remainingMinutes % 60;
-          
-          let lockText = hours > 0 ? `${hours} ساعت و ${minutes} دقیقه` : `${minutes} دقیقه`;
+        if (user.messageCount >= FREE_LIMIT) {
+          if (user.lockUntil && new Date(user.lockUntil) > now) {
+            const remainingTimeMs = new Date(user.lockUntil).getTime() - now.getTime();
+            const remainingMinutes = Math.ceil(remainingTimeMs / (1000 * 60));
+            const hours = Math.floor(remainingMinutes / 60);
+            const minutes = remainingMinutes % 60;
+            
+            let lockText = hours > 0 ? `${hours} ساعت و ${minutes} دقیقه` : `${minutes} دقیقه`;
 
-          return NextResponse.json(
-            { 
-              error: "TEMPORARY_LOCKED", 
-              code: "TEMPORARY_LOCKED",
-              message: `سهمیه ۱۰ پیام رایگان شما به اتمام رسیده است. ${lockText} دیگر می‌توانید پیام بعدی را ارسال کنید، یا برای ادامه گفتگو به صورت نامحدود، یکی از بسته‌های اشتراک را تهیه کنید.`,
-              lockUntil: user.lockUntil
-            }, 
-            { status: 403 }
-          );
-        } else {
-          const nextLockTime = new Date(now.getTime() + 2 * 60 * 60 * 1000);
-          await prisma.user.update({
-            where: { id: userId },
-            data: { lockUntil: nextLockTime }
-          });
+            return NextResponse.json(
+              { 
+                error: "TEMPORARY_LOCKED", 
+                code: "TEMPORARY_LOCKED",
+                message: `سهمیه ۱۰ پیام رایگان شما به اتمام رسیده است. ${lockText} دیگر می‌توانید پیام بعدی را ارسال کنید...`,
+                lockUntil: user.lockUntil
+              }, 
+              { status: 403 }
+            );
+          } else {
+            const nextLockTime = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+            await prisma.user.update({
+              where: { id: userId },
+              data: { lockUntil: nextLockTime }
+            });
+          }
         }
       }
-    }
+    */
 
     const formData = await req.formData();
     const message = formData.get("message") as string || "";
@@ -145,7 +205,7 @@ export async function POST(req: Request) {
     let audioUrl = null;
     let transcribedText = "";
 
-    // ۳. ذخیره و ترجمه صوت با Whisper
+    // ذخیره و ترجمه صوت با Whisper
     if (targetAudio && targetAudio.size > 0) {
       const bytes = await targetAudio.arrayBuffer();
       const buffer = Buffer.from(bytes);
@@ -204,7 +264,7 @@ export async function POST(req: Request) {
       },
     });
 
-    // دریافت تاریخچه (۱۰ پیام آخر برای حفظ زمینه و رعایت نرخ توکن)
+    // دریافت تاریخچه پیام‌ها برای اتصال زنجیره گفتگو
     const allMessages = await prisma.message.findMany({
       where: { conversationId },
       orderBy: { createdAt: "asc" },
@@ -219,6 +279,7 @@ export async function POST(req: Request) {
 
     const systemPromptText = getSystemPrompt(userTone);
 
+    // ارسال پرامپت سیستمی جامع همراه با تاریخچه مکالمات به هوش مصنوعی
     const chatCompletion = await groq.chat.completions.create({
       messages: [
         {
@@ -228,7 +289,7 @@ export async function POST(req: Request) {
         ...formattedHistory,
       ],
       model: "openai/gpt-oss-120b",
-      temperature: 0.3, // 👈 کاهش دمانس برای تبعیت دقیق‌تر از قوانین تک‌سوال و کوتاه‌گویی
+      temperature: 0.3, 
     });
 
     const aiResponseText = chatCompletion.choices[0]?.message?.content || "متوجه شدم، کمی بیشتر توضیح می‌دهی؟";
@@ -242,25 +303,9 @@ export async function POST(req: Request) {
       data: { updatedAt: new Date() },
     });
 
-    let updatedMessageCount = user.messageCount;
-    if (!hasActiveSubscription) {
-      updatedMessageCount += 1;
-      await prisma.user.update({
-        where: { id: userId },
-        data: {
-          messageCount: updatedMessageCount,
-          lastMessageDate: new Date(),
-        },
-      });
-    }
-
-    const remainingFree = hasActiveSubscription ? 999 : Math.max(0, 10 - updatedMessageCount);
-
     return NextResponse.json({
       conversationId,
       response: aiResponseText,
-      remainingFree: remainingFree,
-      isSubscribed: hasActiveSubscription,
       transcribedText: transcribedText,
     }, { status: 200 });
 
