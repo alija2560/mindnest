@@ -11,7 +11,7 @@ const groq = new Groq({
   baseURL: "https://nava-vercel-proxy.vercel.app",
 });
 
-// سیستم‌پرامپت جامع، حرفه‌ای و نهایی «نوا» (تبدیل به تابع برای هماهنگی با ساختار پروژه)
+// سیستم‌پرامپت جامع، حرفه‌ای و نهایی «نوا» (حفظ ۱۰۰ درصدی ساختار و متن اصلی شما)
 export const getSystemPrompt = (tone: string = "friendly") => {
   const baseRules = `
 # پرامپت اصلی و جامع نوا (NAVA)
@@ -660,8 +660,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const now = new Date();
-
     const formData = await req.formData();
     const message = formData.get("message") as string || "";
     let conversationId = formData.get("conversationId") as string | null;
@@ -696,7 +694,7 @@ export async function POST(req: Request) {
       try {
         const transcription = await groq.audio.transcriptions.create({
           file: targetAudio,
-          model: "llama-3.3-70b-versatile",
+          model: "whisper-large-v3",
           language: "fa",
         });
 
@@ -737,7 +735,7 @@ export async function POST(req: Request) {
       },
     });
 
-    // دریافت تاریخچه پیام‌ها برای اتصال زنجیره گفتگو (تنظیم روی -1 برای جلوگیری از خطای توکن)
+    // دریافت تاریخچه پیام‌ها (تنظیم روی -1 برای سبک ماندن درخواست)
     const allMessages = await prisma.message.findMany({
       where: { conversationId },
       orderBy: { createdAt: "asc" },
@@ -752,7 +750,7 @@ export async function POST(req: Request) {
 
     const systemPromptText = getSystemPrompt(userTone);
 
-    // ارسال پرامپت سیستمی همراه با تاریخچه مکالمات به هوش مصنوعی
+    // ارسال پرامپت سیستمی به همراه مدل استاندارد و پرظرفیت
     const chatCompletion = await groq.chat.completions.create({
       messages: [
         {
@@ -761,7 +759,7 @@ export async function POST(req: Request) {
         },
         ...formattedHistory,
       ],
-      model: "openai/gpt-oss-120b",
+      model: "llama-3.3-70b-versatile", // <-- اصلاح شد: تغییر به مدل با سقف توکن بالا
       temperature: 0.3, 
     });
 
