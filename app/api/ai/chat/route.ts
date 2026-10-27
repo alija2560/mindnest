@@ -12,7 +12,7 @@ const groq = new Groq({
 });
 
 // سیستم‌پرامپت جامع، حرفه‌ای و نهایی «نوا» (تبدیل به تابع برای هماهنگی با ساختار پروژه)
-const getSystemPrompt = (tone: string = "friendly") => {
+export const getSystemPrompt = (tone: string = "friendly") => {
   const baseRules = `
 # پرامپت اصلی و جامع نوا (NAVA)
 # دستیار هوشمند روان‌شناختی و همراه رشد فردی در MindNest
@@ -662,45 +662,6 @@ export async function POST(req: Request) {
 
     const now = new Date();
 
-    /* 
-      =========================================================
-      بخش محدودیت ۱۰ پیام رایگان و قفل ۲ ساعته (در حال حاضر غیرفعال/کامنت شده)
-      =========================================================
-      
-      const hasActiveSubscription = user.isSubscribed && user.subscriptionExpiresAt && new Date(user.subscriptionExpiresAt) > now;
-
-      if (!hasActiveSubscription) {
-        const FREE_LIMIT = 10;
-
-        if (user.messageCount >= FREE_LIMIT) {
-          if (user.lockUntil && new Date(user.lockUntil) > now) {
-            const remainingTimeMs = new Date(user.lockUntil).getTime() - now.getTime();
-            const remainingMinutes = Math.ceil(remainingTimeMs / (1000 * 60));
-            const hours = Math.floor(remainingMinutes / 60);
-            const minutes = remainingMinutes % 60;
-            
-            let lockText = hours > 0 ? `${hours} ساعت و ${minutes} دقیقه` : `${minutes} دقیقه`;
-
-            return NextResponse.json(
-              { 
-                error: "TEMPORARY_LOCKED", 
-                code: "TEMPORARY_LOCKED",
-                message: `سهمیه ۱۰ پیام رایگان شما به اتمام رسیده است. ${lockText} دیگر می‌توانید پیام بعدی را ارسال کنید...`,
-                lockUntil: user.lockUntil
-              }, 
-              { status: 403 }
-            );
-          } else {
-            const nextLockTime = new Date(now.getTime() + 2 * 60 * 60 * 1000);
-            await prisma.user.update({
-              where: { id: userId },
-              data: { lockUntil: nextLockTime }
-            });
-          }
-        }
-      }
-    */
-
     const formData = await req.formData();
     const message = formData.get("message") as string || "";
     let conversationId = formData.get("conversationId") as string | null;
@@ -776,7 +737,7 @@ export async function POST(req: Request) {
       },
     });
 
-    // دریافت تاریخچه پیام‌ها برای اتصال زنجیره گفتگو
+    // دریافت تاریخچه پیام‌ها برای اتصال زنجیره گفتگو (تنظیم روی -1 برای جلوگیری از خطای توکن)
     const allMessages = await prisma.message.findMany({
       where: { conversationId },
       orderBy: { createdAt: "asc" },
