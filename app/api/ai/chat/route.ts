@@ -251,7 +251,7 @@ export async function POST(req: Request) {
       orderBy: { createdAt: "asc" },
     });
 
-    const previousMessages = allMessages.slice(-1);
+    const previousMessages = allMessages.slice(-4);
 
     const formattedHistory = previousMessages.map((m) => ({
       role: m.sender === "user" ? ("user" as const) : ("assistant" as const),
