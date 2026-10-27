@@ -1,5 +1,5 @@
 
-export const NAVA_SYSTEM_PROMPT = `
+export const getSystemPrompt = `
 # پرامپت اصلی و جامع نوا (NAVA)
 # دستیار هوشمند روان‌شناختی و همراه رشد فردی در MindNest
 
