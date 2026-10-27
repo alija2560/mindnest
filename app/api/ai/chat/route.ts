@@ -113,6 +113,7 @@ export const getSystemPrompt = (tone: string = "friendly") => {
       return `${baseRules}\nلحن ارتباط: بسیار صمیمی، گرم، عمیقاً مأمن و آرامش‌بخش، به زبان فارسی ساده و خودمانی.`;
   }
 };
+
 // دریافت پیام‌های یک گفتگو
 export async function GET(req: Request) {
   try {
@@ -167,6 +168,55 @@ export async function POST(req: Request) {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // =========================================================
+    // بخش بررسی محدودیت ۱۰ پیام رایگان و قفل ۲ ساعته
+    // =========================================================
+    const now = new Date();
+    const hasActiveSubscription = user.isSubscribed && user.subscriptionExpiresAt && new Date(user.subscriptionExpiresAt) > now;
+
+    if (!hasActiveSubscription) {
+      const FREE_LIMIT = 10;
+
+      if (user.messageCount >= FREE_LIMIT) {
+        if (user.lockUntil && new Date(user.lockUntil) > now) {
+          const remainingTimeMs = new Date(user.lockUntil).getTime() - now.getTime();
+          const remainingMinutes = Math.ceil(remainingTimeMs / (1000 * 60));
+          const hours = Math.floor(remainingMinutes / 60);
+          const minutes = remainingMinutes % 60;
+          
+          let lockText = hours > 0 ? `${hours} ساعت و ${minutes} دقیقه` : `${minutes} دقیقه`;
+
+          return NextResponse.json(
+            { 
+              error: "TEMPORARY_LOCKED", 
+              code: "TEMPORARY_LOCKED",
+              message: `سهمیه ۱۰ پیام رایگان شما به اتمام رسیده است. ${lockText} دیگر می‌توانید پیام بعدی را ارسال کنید...`,
+              lockUntil: user.lockUntil
+            }, 
+            { status: 403 }
+          );
+        } else {
+          // اگر قفل قبلی تمام شده بود، یک قفل جدید ۲ ساعته اعمال می‌کنیم یا پیام خطا می‌دهیم
+          // (بر اساس منطق شما در اینجا قفل جدید ست می‌شود)
+          const nextLockTime = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+          await prisma.user.update({
+            where: { id: userId },
+            data: { lockUntil: nextLockTime }
+          });
+
+          return NextResponse.json(
+            { 
+              error: "TEMPORARY_LOCKED", 
+              code: "TEMPORARY_LOCKED",
+              message: `سهمیه ۱۰ پیام رایگان شما به اتمام رسیده است. 2 ساعت دیگر می‌توانید پیام بعدی را ارسال کنید.`,
+              lockUntil: nextLockTime
+            }, 
+            { status: 403 }
+          );
+        }
+      }
     }
 
     const formData = await req.formData();
@@ -244,8 +294,15 @@ export async function POST(req: Request) {
       },
     });
 
-    // دریافت تاریخچه پیام‌ها (تنظیم روی -1 برای سبک ماندن درخواست)
-  // دریافت تاریخچه پیام‌ها (فقط آخرین پیام برای جلوگیری از خطای حجم توکن)
+    // افزایش شمارنده پیام‌های کاربر در صورت نداشتن اشتراک فعال
+    if (!hasActiveSubscription) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { messageCount: { increment: 1 } }
+      });
+    }
+
+    // دریافت تاریخچه پیام‌ها (فقط آخرین پیام‌ها برای جلوگیری از خطای حجم توکن)
     const allMessages = await prisma.message.findMany({
       where: { conversationId },
       orderBy: { createdAt: "asc" },
@@ -260,7 +317,7 @@ export async function POST(req: Request) {
 
     const systemPromptText = getSystemPrompt(userTone);
 
-    // ارسال درخواست با همان مدل خودتان (`openai/gpt-oss-120b`)
+    // ارسال درخواست با مدل مشخص‌شده
     const chatCompletion = await groq.chat.completions.create({
       messages: [
         {
@@ -269,9 +326,10 @@ export async function POST(req: Request) {
         },
         ...formattedHistory,
       ],
-      model: "openai/gpt-oss-120b", // <-- بازگشت به مدل اصلی خودتان
+      model: "openai/gpt-oss-120b",
       temperature: 0.3, 
     });
+    
     const aiResponseText = chatCompletion.choices[0]?.message?.content || "متوجه شدم، کمی بیشتر توضیح می‌دهی؟";
 
     await prisma.message.create({
