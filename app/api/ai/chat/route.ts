@@ -11,10 +11,9 @@ const groq = new Groq({
   baseURL: "https://nava-vercel-proxy.vercel.app",
 });
 
-// سیستم‌پرامپت جامع، حرفه‌ای و نهایی «نوا» با ترکیب پرامپت کامل شما + قوانین کشش، قصه‌گویی و ضدسلام
-
-
-export const getSystemPrompt = `
+// سیستم‌پرامپت جامع، حرفه‌ای و نهایی «نوا» (تبدیل به تابع برای هماهنگی با ساختار پروژه)
+const getSystemPrompt = (tone: string = "friendly") => {
+  const baseRules = `
 # پرامپت اصلی و جامع نوا (NAVA)
 # دستیار هوشمند روان‌شناختی و همراه رشد فردی در MindNest
 
@@ -594,6 +593,16 @@ export const getSystemPrompt = `
 همیشه صادق باش، محترمانه رفتار کن، منصفانه تحلیل کن و به رشد واقعی کاربر کمک کن.
 `;
 
+  switch (tone) {
+    case "formal":
+      return `${baseRules}\nلحن ارتباط: رسمی، حرفه‌ای و محترمانه به زبان فارسی ساده.`;
+    case "concise":
+      return `${baseRules}\nلحن ارتباط: مقتصد، مفید و مستقیم به زبان فارسی ساده.`;
+    case "friendly":
+    default:
+      return `${baseRules}\nلحن ارتباط: بسیار صمیمی، گرم، عمیقاً مأمن و آرامش‌بخش، به زبان فارسی ساده و خودمانی.`;
+  }
+};
 
 // دریافت پیام‌های یک گفتگو
 export async function GET(req: Request) {
