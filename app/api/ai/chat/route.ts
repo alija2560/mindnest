@@ -696,7 +696,7 @@ export async function POST(req: Request) {
       try {
         const transcription = await groq.audio.transcriptions.create({
           file: targetAudio,
-          model: "whisper-large-v3",
+          model: "llama-3.3-70b-versatile",
           language: "fa",
         });
 
