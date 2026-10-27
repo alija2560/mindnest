@@ -736,6 +736,7 @@ export async function POST(req: Request) {
     });
 
     // دریافت تاریخچه پیام‌ها (تنظیم روی -1 برای سبک ماندن درخواست)
+  // دریافت تاریخچه پیام‌ها (فقط آخرین پیام برای جلوگیری از خطای حجم توکن)
     const allMessages = await prisma.message.findMany({
       where: { conversationId },
       orderBy: { createdAt: "asc" },
@@ -750,7 +751,7 @@ export async function POST(req: Request) {
 
     const systemPromptText = getSystemPrompt(userTone);
 
-    // ارسال پرامپت سیستمی به همراه مدل استاندارد و پرظرفیت
+    // ارسال درخواست با همان مدل خودتان (`openai/gpt-oss-120b`)
     const chatCompletion = await groq.chat.completions.create({
       messages: [
         {
@@ -759,10 +760,9 @@ export async function POST(req: Request) {
         },
         ...formattedHistory,
       ],
-      model: "llama-3.3-70b-versatile", // <-- اصلاح شد: تغییر به مدل با سقف توکن بالا
+      model: "openai/gpt-oss-120b", // <-- بازگشت به مدل اصلی خودتان
       temperature: 0.3, 
     });
-
     const aiResponseText = chatCompletion.choices[0]?.message?.content || "متوجه شدم، کمی بیشتر توضیح می‌دهی؟";
 
     await prisma.message.create({
