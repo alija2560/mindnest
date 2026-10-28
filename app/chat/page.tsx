@@ -107,7 +107,7 @@ export default function ChatPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedFilePreviewUrl, setSelectedFilePreviewUrl] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
-  const [isTranscribing, setIsTranscribing] = useState(false); // وضعیت در حال تبدیل صوت به متن
+  const [isTranscribing, setIsTranscribing] = useState(false);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -172,7 +172,7 @@ export default function ChatPage() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, isLoading]);
+  }, [messages, isLoading, isTranscribing]);
 
   const fetchConversationsList = async () => {
     try {
@@ -345,7 +345,7 @@ export default function ChatPage() {
   };
 
   const handleSelectConversation = async (id: string) => {
-    if (isLoading || editingId === id) return;
+    if (isLoading || isTranscribing || editingId === id) return;
     setIsLoading(true);
 
     try {
@@ -378,7 +378,7 @@ export default function ChatPage() {
   };  
 
   const handleNewChat = () => {
-    if (isLoading) return;
+    if (isLoading || isTranscribing) return;
     setConversationId(null);
     setMessages([INITIAL_GREETING]);
     clearSelectedFile();
@@ -481,7 +481,7 @@ export default function ChatPage() {
     }
   };
 
-  // ضبط صدا و ارسال خودکار جهت تبدیل به متن (STT)
+  // ضبط صدا و ارسال خودکار جهت تبدیل به متن و نمایش در لحظه
   const startRecording = async () => {
     try {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -547,10 +547,13 @@ export default function ChatPage() {
     setIsTranscribing(true);
     try {
       const formData = new FormData();
-      formData.append("file", audioFile);
+      formData.append("audio", audioFile); // هم‌راستا با ساختار بک‌اند شما
       if (conversationId) {
         formData.append("conversationId", conversationId);
       }
+
+      const savedTone = localStorage.getItem("nava_tone") || "friendly";
+      formData.append("tone", savedTone);
 
       const res = await fetch("/api/ai/chat/", {
         method: "POST",
@@ -564,27 +567,44 @@ export default function ChatPage() {
         data = JSON.parse(responseText);
       } catch (e) {}
 
+      if (res.status === 403 || data?.error === "LIMIT_EXCEEDED" || data?.code === "TEMPORARY_LOCKED" || data?.error === "TEMPORARY_LOCKED") {
+        setShowCreditModal(true);
+        setModalMessage(data?.message || t("outOfQuota"));
+        setIsTranscribing(false);
+        return;
+      }
+
+      if (data && typeof data.remainingFree === "number") {
+        setRemainingFreeMessages(data.remainingFree);
+        if (data.remainingFree <= 5 && data.remainingFree > 0) {
+          setShowWarningBanner(true);
+          setWarningText(`فقط ${data.remainingFree} پیام رایگان دیگر برای امروز باقی مانده است.`);
+        } else if (data.remainingFree === 0) {
+          setShowWarningBanner(true);
+          setWarningText("سهمیه پیام‌های رایگان امروز شما تمام شده است.");
+        } else {
+          setShowWarningBanner(false);
+        }
+      }
+
       if (res.ok && data) {
-        const transcript = data?.transcript || data?.userMessage || "";
-        const assistantResponse = data?.response || data?.text || data?.message;
-
-        if (transcript) {
-          setInput(transcript); // متن استخراج‌شده درون تکس باکس قرار می‌گیرد
+        if (!conversationId && data?.conversationId) {
+          setConversationId(data.conversationId);
         }
 
-        if (assistantResponse) {
-          if (!conversationId && data?.conversationId) {
-            setConversationId(data.conversationId);
-          }
-          setMessages((prev) => [
-            ...prev,
-            { role: "user", content: transcript || "🎤 پیام صوتی" },
-            { role: "assistant", content: assistantResponse }
-          ]);
-          fetchConversationsList();
-        }
+        const transcript = data?.transcribedText || data?.transcript || data?.userMessage || "🎤 پیام صوتی";
+        const assistantResponse = data?.response || data?.text || data?.message || "پاسخی دریافت نشد.";
+
+        // نمایش فوری متن تبدیل‌شده در همان لحظه در چت
+        setMessages((prev) => [
+          ...prev,
+          { role: "user", content: transcript },
+          { role: "assistant", content: assistantResponse }
+        ]);
+
+        fetchConversationsList();
       } else {
-        alert("خطا در تبدیل صوت به متن.");
+        alert("خطا در تبدیل صوت به متن: " + (data?.error || "خطای سرور"));
       }
     } catch (error) {
       console.error("Transcription error:", error);
@@ -948,6 +968,13 @@ export default function ChatPage() {
               </div>
             </div>
           ))}
+          {isTranscribing && (
+            <div className="flex flex-col gap-1 max-w-[85%] md:max-w-[70%] ml-auto items-end">
+              <div className={`p-4 rounded-2xl text-xs md:text-sm bg-teal-600/70 text-white rounded-br-none animate-pulse`}>
+                🎤 در حال تبدیل صوت به متن...
+              </div>
+            </div>
+          )}
           <div ref={messagesEndRef} />
         </div>
 
@@ -984,7 +1011,7 @@ export default function ChatPage() {
             }`}>
               
               <textarea
-                value={isRecording ? "🔴 در حال ضبط صوت... (برای پایان روی میکروفون کلیک کنید)" : isTranscribing ? "⏳ در حال تبدیل صوت به متن..." : input}
+                value={isRecording ? "🔴 در حال ضبط صوت... (برای پایان روی میکروفون کلیک کنید)" : isTranscribing ? "⏳ در حال تبدیل صوت به متن توسط سرور..." : input}
                 onChange={(e) => !isRecording && !isTranscribing && setInput(e.target.value)}
                 readOnly={isRecording || isTranscribing}
                 onKeyDown={(e) => {
