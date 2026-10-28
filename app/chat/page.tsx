@@ -547,7 +547,7 @@ export default function ChatPage() {
     setIsTranscribing(true);
     try {
       const formData = new FormData();
-      formData.append("audio", audioFile); // هم‌راستا با ساختار بک‌اند شما
+      formData.append("audio", audioFile);
       if (conversationId) {
         formData.append("conversationId", conversationId);
       }
@@ -595,7 +595,7 @@ export default function ChatPage() {
         const transcript = data?.transcribedText || data?.transcript || data?.userMessage || "🎤 پیام صوتی";
         const assistantResponse = data?.response || data?.text || data?.message || "پاسخی دریافت نشد.";
 
-        // نمایش فوری متن تبدیل‌شده در همان لحظه در چت
+        // ✅ نمایش فوری متن تبدیل‌شده در همان لحظه در چت (به جای پیام صوتی یا در حال انتظار)
         setMessages((prev) => [
           ...prev,
           { role: "user", content: transcript },
@@ -968,13 +968,16 @@ export default function ChatPage() {
               </div>
             </div>
           ))}
+          
+          {/* حباب وضعیت در حال تبدیل صوت به متن */}
           {isTranscribing && (
             <div className="flex flex-col gap-1 max-w-[85%] md:max-w-[70%] ml-auto items-end">
-              <div className={`p-4 rounded-2xl text-xs md:text-sm bg-teal-600/70 text-white rounded-br-none animate-pulse`}>
-                🎤 در حال تبدیل صوت به متن...
+              <div className="p-4 rounded-2xl text-xs md:text-sm bg-teal-600/70 text-white rounded-br-none animate-pulse">
+                🎤 در حال تبدیل صوت به متن و ارسال...
               </div>
             </div>
           )}
+
           <div ref={messagesEndRef} />
         </div>
 
@@ -1011,7 +1014,7 @@ export default function ChatPage() {
             }`}>
               
               <textarea
-                value={isRecording ? "🔴 در حال ضبط صوت... (برای پایان روی میکروفون کلیک کنید)" : isTranscribing ? "⏳ در حال تبدیل صوت به متن توسط سرور..." : input}
+                value={isRecording ? "🔴 در حال ضبط صوت... (برای پایان روی میکروفون کلیک کنید)" : isTranscribing ? "⏳ در حال تبدیل صوت به متن..." : input}
                 onChange={(e) => !isRecording && !isTranscribing && setInput(e.target.value)}
                 readOnly={isRecording || isTranscribing}
                 onKeyDown={(e) => {
