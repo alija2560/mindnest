@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { Groq } from "groq-sdk";
 import { writeFile, mkdir, readFile } from "fs/promises";
 import path from "path";
-import pdfParse from "pdf-parse";
+const pdfParse = require("pdf-parse");
 import mammoth from "mammoth";
 
 // 🚀 تنظیم Base URL به پروکسی Vercel برای عبور از تحریم و خطای ۴۰۳
