@@ -2,9 +2,8 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { Groq } from "groq-sdk";
-import { writeFile, mkdir, readFile } from "fs/promises";
+import { writeFile, mkdir } from "fs/promises";
 import path from "path";
-const pdfParse = require("pdf-parse");
 import mammoth from "mammoth";
 
 // 🚀 تنظیم Base URL به پروکسی Vercel برای عبور از تحریم و خطای ۴۰۳
@@ -172,7 +171,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    // =========================================================
     // بررسی محدودیت ۱۰ پیام رایگان و قفل ۲ ساعته
+    // =========================================================
     const now = new Date();
     const hasActiveSubscription = user.isSubscribed && user.subscriptionExpiresAt && new Date(user.subscriptionExpiresAt) > now;
 
@@ -262,7 +263,7 @@ export async function POST(req: Request) {
         console.error("❌ Whisper transcription error:", transError?.message || transError);
       }
     } 
-    // پردازش فایل‌های غیر صوتی (تصویر، PDF، Word، Excel)
+    // پردازش فایل‌های پیوست (تصویر، PDF، Word، Excel)
     else if (file && file.size > 0) {
       const bytes = await file.arrayBuffer();
       const buffer = Buffer.from(bytes);
@@ -275,21 +276,18 @@ export async function POST(req: Request) {
         const filePath = path.join(uploadDir, filename);
         await writeFile(filePath, buffer);
 
-        // اگر فایل تصویر باشد
         if (file.type.startsWith("image/")) {
           fileImageUrl = `/uploads/${filename}`;
-        } 
-        // اگر فایل PDF باشد
-        else if (file.type === "application/pdf" || file.name.endsWith(".pdf")) {
+        } else if (file.type === "application/pdf" || file.name.endsWith(".pdf")) {
           try {
+            // بارگذاری پویا برای جلوگیری از خطای Build در سرور
+            const pdfParse = require("pdf-parse");
             const pdfData = await pdfParse(buffer);
-            fileExtractedText = pdfData.text ? pdfData.text.slice(0, 4000) : ""; // محدودیت حجم متن برای جلوگیری از اورفلو توکن
+            fileExtractedText = pdfData.text ? pdfData.text.slice(0, 4000) : "";
           } catch (pdfErr) {
             console.error("Error parsing PDF:", pdfErr);
           }
-        } 
-        // اگر فایل Word (docx) باشد
-        else if (file.name.endsWith(".docx") || file.type.includes("wordprocessingml")) {
+        } else if (file.name.endsWith(".docx") || file.type.includes("wordprocessingml")) {
           try {
             const docResult = await mammoth.extractRawText({ buffer });
             fileExtractedText = docResult.value ? docResult.value.slice(0, 4000) : "";
@@ -331,7 +329,7 @@ export async function POST(req: Request) {
       conversationId = newConv.id;
     }
 
-    // ذخیره پیام کاربر
+    // ذخیره پیام کاربر در دیتابیس
     await prisma.message.create({
       data: { 
         conversationId, 
@@ -349,7 +347,7 @@ export async function POST(req: Request) {
       });
     }
 
-    // دریافت تاریخچه پیام‌ها
+    // دریافت تاریخچه پیام‌ها برای ارسال به مدل
     const allMessages = await prisma.message.findMany({
       where: { conversationId },
       orderBy: { createdAt: "asc" },
@@ -364,7 +362,7 @@ export async function POST(req: Request) {
 
     const systemPromptText = getSystemPrompt(userTone);
 
-    // ارسال درخواست به مدل هوش مصنوعی Groq
+    // ارسال درخواست به هوش مصنوعی Groq
     const chatCompletion = await groq.chat.completions.create({
       messages: [
         {
@@ -379,6 +377,7 @@ export async function POST(req: Request) {
     
     const aiResponseText = chatCompletion.choices[0]?.message?.content || "متوجه شدم، کمی بیشتر توضیح می‌دهی؟";
 
+    // ذخیره پاسخ هوش مصنوعی در دیتابیس
     await prisma.message.create({
       data: { conversationId, sender: "assistant", content: aiResponseText },
     });
