@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { Groq } from "groq-sdk";
-import { writeFile, mkdir } from "fs/promises";
+import { writeFile, mkdir, readFile } from "fs/promises";
 import path from "path";
+import pdfParse from "pdf-parse";
+import mammoth from "mammoth";
 
 // 🚀 تنظیم Base URL به پروکسی Vercel برای عبور از تحریم و خطای ۴۰۳
 const groq = new Groq({
@@ -170,9 +172,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // =========================================================
-    // بخش بررسی محدودیت ۱۰ پیام رایگان و قفل ۲ ساعته
-    // =========================================================
+    // بررسی محدودیت ۱۰ پیام رایگان و قفل ۲ ساعته
     const now = new Date();
     const hasActiveSubscription = user.isSubscribed && user.subscriptionExpiresAt && new Date(user.subscriptionExpiresAt) > now;
 
@@ -198,8 +198,6 @@ export async function POST(req: Request) {
             { status: 403 }
           );
         } else {
-          // اگر قفل قبلی تمام شده بود، یک قفل جدید ۲ ساعته اعمال می‌کنیم یا پیام خطا می‌دهیم
-          // (بر اساس منطق شما در اینجا قفل جدید ست می‌شود)
           const nextLockTime = new Date(now.getTime() + 2 * 60 * 60 * 1000);
           await prisma.user.update({
             where: { id: userId },
@@ -234,6 +232,8 @@ export async function POST(req: Request) {
 
     let audioUrl = null;
     let transcribedText = "";
+    let fileExtractedText = "";
+    let fileImageUrl = null;
 
     // ذخیره و ترجمه صوت با Whisper
     if (targetAudio && targetAudio.size > 0) {
@@ -261,6 +261,45 @@ export async function POST(req: Request) {
       } catch (transError: any) {
         console.error("❌ Whisper transcription error:", transError?.message || transError);
       }
+    } 
+    // پردازش فایل‌های غیر صوتی (تصویر، PDF، Word، Excel)
+    else if (file && file.size > 0) {
+      const bytes = await file.arrayBuffer();
+      const buffer = Buffer.from(bytes);
+      const safeName = file.name.replace(/[^a-zA-Z0-9_.-]/g, "_");
+      const filename = `file_${Date.now()}_${safeName}`;
+      const uploadDir = path.join(process.cwd(), "public", "uploads");
+
+      try {
+        await mkdir(uploadDir, { recursive: true });
+        const filePath = path.join(uploadDir, filename);
+        await writeFile(filePath, buffer);
+
+        // اگر فایل تصویر باشد
+        if (file.type.startsWith("image/")) {
+          fileImageUrl = `/uploads/${filename}`;
+        } 
+        // اگر فایل PDF باشد
+        else if (file.type === "application/pdf" || file.name.endsWith(".pdf")) {
+          try {
+            const pdfData = await pdfParse(buffer);
+            fileExtractedText = pdfData.text ? pdfData.text.slice(0, 4000) : ""; // محدودیت حجم متن برای جلوگیری از اورفلو توکن
+          } catch (pdfErr) {
+            console.error("Error parsing PDF:", pdfErr);
+          }
+        } 
+        // اگر فایل Word (docx) باشد
+        else if (file.name.endsWith(".docx") || file.type.includes("wordprocessingml")) {
+          try {
+            const docResult = await mammoth.extractRawText({ buffer });
+            fileExtractedText = docResult.value ? docResult.value.slice(0, 4000) : "";
+          } catch (docErr) {
+            console.error("Error parsing Word document:", docErr);
+          }
+        }
+      } catch (fileErr) {
+        console.error("Error handling uploaded file:", fileErr);
+      }
     }
 
     let userMessageContent = message;
@@ -271,11 +310,19 @@ export async function POST(req: Request) {
         userMessageContent = message || "🎤 [پیام صوتی]";
       }
     } else if (file) {
-      userMessageContent = message || `[فایل پیوست: ${file.name}]`;
+      if (fileImageUrl) {
+        userMessageContent = message ? `${message}\n\n[تصویر پیوست]` : "[تصویر پیوست]";
+      } else if (fileExtractedText) {
+        userMessageContent = message 
+          ? `${message}\n\n--- محتوای فایل پیوست (${file.name}) ---\n${fileExtractedText}` 
+          : `[محتوای فایل ${file.name}]:\n${fileExtractedText}`;
+      } else {
+        userMessageContent = message || `[فایل پیوست: ${file.name}]`;
+      }
     }
 
     if (!conversationId) {
-      const titleSource = transcribedText || message || "گفتگوی جدید";
+      const titleSource = transcribedText || message || (file ? `فایل: ${file.name}` : "گفتگوی جدید");
       const generatedTitle = titleSource.length > 20 ? titleSource.substring(0, 20) + "..." : titleSource;
       
       const newConv = await prisma.conversation.create({
@@ -302,7 +349,7 @@ export async function POST(req: Request) {
       });
     }
 
-    // دریافت تاریخچه پیام‌ها (فقط آخرین پیام‌ها برای جلوگیری از خطای حجم توکن)
+    // دریافت تاریخچه پیام‌ها
     const allMessages = await prisma.message.findMany({
       where: { conversationId },
       orderBy: { createdAt: "asc" },
@@ -317,7 +364,7 @@ export async function POST(req: Request) {
 
     const systemPromptText = getSystemPrompt(userTone);
 
-    // ارسال درخواست با مدل مشخص‌شده
+    // ارسال درخواست به مدل هوش مصنوعی Groq
     const chatCompletion = await groq.chat.completions.create({
       messages: [
         {
