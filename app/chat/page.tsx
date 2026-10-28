@@ -812,7 +812,8 @@ export default function ChatPage() {
                       <div className={`truncate font-medium flex-1 ${isDark ? "text-slate-200" : "text-slate-700"}`}>
                         {conv.title || t("untitledChat")}
                       </div>
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 group-active:opacity-100 transition-opacity">
+                      {/* دکمه‌های ویرایش و حذف مخفی که با هاور یا لمس ظاهر می‌شوند */}
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 group-active:opacity-100 focus-within:opacity-100 transition-opacity">
                         <button onClick={(e) => startEditing(e, conv)} className="text-slate-400 hover:text-teal-500 p-1" title="ویرایش">✏️</button>
                         <button onClick={(e) => handleDeleteConversation(e, conv.id)} className="text-slate-400 hover:text-red-400 p-1" title="حذف">🗑️</button>
                       </div>
@@ -935,17 +936,17 @@ export default function ChatPage() {
           </div>
         )}
 
-        {/* بخش نمایش پیام‌ها */}
+        {/* بخش نمایش پیام‌ها (تراز دقیق راست برای کاربر و چپ برای نوا) */}
         <div 
           ref={chatContainerRef}
           onScroll={handleScroll}
-          className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 relative"
+          className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 relative flex flex-col"
         >
           {messages.map((msg, index) => (
             <div
               key={index}
-              className={`flex flex-col gap-1 max-w-[85%] md:max-w-[70%] ${
-                msg.role === "user" ? "ml-auto items-end" : "mr-auto items-start"
+              className={`flex flex-col gap-1 max-w-[85%] md:max-w-[70%] w-full ${
+                msg.role === "user" ? "ml-auto items-end text-right" : "mr-auto items-start text-right"
               }`}
             >
               <div
@@ -985,7 +986,7 @@ export default function ChatPage() {
           
           {/* حباب وضعیت در حال تبدیل صوت به متن */}
           {isTranscribing && (
-            <div className="flex flex-col gap-1 max-w-[85%] md:max-w-[70%] ml-auto items-end">
+            <div className="flex flex-col gap-1 max-w-[85%] md:max-w-[70%] ml-auto items-end w-full">
               <div className="p-4 rounded-2xl text-xs md:text-sm bg-teal-600/70 text-white rounded-br-none animate-pulse">
                 🎤 در حال تبدیل صوت به متن و ارسال...
               </div>
