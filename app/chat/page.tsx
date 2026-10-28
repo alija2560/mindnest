@@ -29,6 +29,20 @@ const TypingIndicator = ({ isDark }: { isDark: boolean }) => {
   );
 };
 
+// کامپوننت موج صوتی متحرک هنگام ضبط صدا
+const AudioWaveform = () => {
+  return (
+    <div className="flex items-center gap-1.5 h-6 px-2">
+      <span className="text-xs font-medium text-red-500 ml-2">در حال ضبط صدا...</span>
+      <div className="w-1 bg-red-500 rounded-full animate-[bounce_1s_infinite_-0.4s] h-3"></div>
+      <div className="w-1 bg-red-500 rounded-full animate-[bounce_1s_infinite_-0.2s] h-6"></div>
+      <div className="w-1 bg-red-500 rounded-full animate-[bounce_1s_infinite_-0.6s] h-4"></div>
+      <div className="w-1 bg-red-500 rounded-full animate-[bounce_1s_infinite_-0.1s] h-5"></div>
+      <div className="w-1 bg-red-500 rounded-full animate-[bounce_1s_infinite_-0.5s] h-3"></div>
+    </div>
+  );
+};
+
 const formatGregorianDate = (dateString: string) => {
   if (!dateString) return "";
   const date = new Date(dateString);
@@ -595,7 +609,7 @@ export default function ChatPage() {
         const transcript = data?.transcribedText || data?.transcript || data?.userMessage || "🎤 پیام صوتی";
         const assistantResponse = data?.response || data?.text || data?.message || "پاسخی دریافت نشد.";
 
-        // ✅ نمایش فوری متن تبدیل‌شده در همان لحظه در چت (به جای پیام صوتی یا در حال انتظار)
+        // نمایش فوری متن تبدیل‌شده در همان لحظه در چت
         setMessages((prev) => [
           ...prev,
           { role: "user", content: transcript },
@@ -798,7 +812,7 @@ export default function ChatPage() {
                       <div className={`truncate font-medium flex-1 ${isDark ? "text-slate-200" : "text-slate-700"}`}>
                         {conv.title || t("untitledChat")}
                       </div>
-                      <div className="flex items-center gap-1 opacity-100 transition-opacity">
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 group-active:opacity-100 transition-opacity">
                         <button onClick={(e) => startEditing(e, conv)} className="text-slate-400 hover:text-teal-500 p-1" title="ویرایش">✏️</button>
                         <button onClick={(e) => handleDeleteConversation(e, conv.id)} className="text-slate-400 hover:text-red-400 p-1" title="حذف">🗑️</button>
                       </div>
@@ -949,7 +963,7 @@ export default function ChatPage() {
                   <>
                     <div className="whitespace-pre-wrap">{msg.content}</div>
 
-                    {/* دکمه کپی متن */}
+                    {/* دکمه کپی متن (نمایش فقط هنگام هاور یا لمس روی پیام) */}
                     {msg.content !== "typing-indicator" && (
                       <button
                         onClick={() => {
@@ -957,7 +971,7 @@ export default function ChatPage() {
                           setCopiedIndex(index);
                           setTimeout(() => setCopiedIndex(null), 2000);
                         }}
-                        className={`absolute top-2 ${msg.role === 'user' ? 'left-2' : 'right-2'} opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded bg-black/20 text-white text-[10px]`}
+                        className={`absolute top-2 ${msg.role === 'user' ? 'left-2' : 'right-2'} opacity-0 group-hover:opacity-100 group-active:opacity-100 transition-opacity p-1 rounded bg-black/20 text-white text-[10px] cursor-pointer`}
                         title="کپی متن"
                       >
                         {copiedIndex === index ? "✓ کپی شد" : "📋 کپی"}
@@ -1006,41 +1020,51 @@ export default function ChatPage() {
           )}
 
           <form onSubmit={handleSubmit} className="flex items-end gap-2 max-w-4xl mx-auto">
-            {/* تکس باکس با حالت پردازش صوت و افکت پالس قرمز */}
+            {/* تکس باکس با افکت امواج صوتی متحرک و قاب قرمز شکیل */}
             <div className={`flex-1 flex items-center rounded-2xl border transition-all px-3 py-2 ${
-              isRecording || isTranscribing
-                ? "bg-red-500/10 border-red-500 animate-pulse" 
+              isRecording 
+                ? "bg-red-500/10 border-red-500 shadow-lg shadow-red-500/10 ring-2 ring-red-500/20" 
+                : isTranscribing
+                ? "bg-amber-500/10 border-amber-500 animate-pulse"
                 : isDark ? "bg-slate-950 border-slate-800 focus-within:border-teal-500" : "bg-slate-100 border-slate-200 focus-within:border-teal-500"
             }`}>
               
-              <textarea
-                value={isRecording ? "🔴 در حال ضبط صوت... (برای پایان روی میکروفون کلیک کنید)" : isTranscribing ? "⏳ در حال تبدیل صوت به متن..." : input}
-                onChange={(e) => !isRecording && !isTranscribing && setInput(e.target.value)}
-                readOnly={isRecording || isTranscribing}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSubmit(e);
-                  }
-                }}
-                rows={1}
-                placeholder={t("typeMessage")}
-                className={`w-full bg-transparent text-xs md:text-sm outline-none resize-none max-h-32 py-1 leading-relaxed ${
-                  isRecording || isTranscribing
-                    ? "text-red-500 font-medium placeholder-red-400" 
-                    : isDark ? "text-slate-100 placeholder-slate-500" : "text-slate-800 placeholder-slate-400"
-                }`}
-                style={{ minHeight: '24px' }}
-              />
+              {isRecording ? (
+                <div className="w-full flex items-center justify-between py-1">
+                  <AudioWaveform />
+                  <span className="text-[10px] text-red-500 font-medium">برای اتمام روی میکروفون کلیک کنید</span>
+                </div>
+              ) : isTranscribing ? (
+                <div className="w-full py-1 text-xs text-amber-500 font-medium px-2 animate-pulse">
+                  ⏳ در حال تبدیل صوت به متن توسط سرور...
+                </div>
+              ) : (
+                <textarea
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSubmit(e);
+                    }
+                  }}
+                  rows={1}
+                  placeholder={t("typeMessage")}
+                  className={`w-full bg-transparent text-xs md:text-sm outline-none resize-none max-h-32 py-1 leading-relaxed ${
+                    isDark ? "text-slate-100 placeholder-slate-500" : "text-slate-800 placeholder-slate-400"
+                  }`}
+                  style={{ minHeight: '24px' }}
+                />
+              )}
 
               <div className="flex items-center gap-1 shrink-0 mr-2">
                 <button
                   type="button"
                   onClick={toggleRecording}
                   disabled={isTranscribing}
-                  className={`p-2 rounded-xl text-xs transition-colors cursor-pointer ${
+                  className={`p-2 rounded-xl text-xs transition-all cursor-pointer ${
                     isRecording 
-                      ? "bg-red-500 text-white animate-bounce" 
+                      ? "bg-red-500 text-white shadow-md shadow-red-500/50 scale-110 animate-pulse" 
                       : isDark ? "text-slate-400 hover:text-slate-200" : "text-slate-500 hover:text-slate-800"
                   }`}
                   title={isRecording ? "توقف ضبط و تبدیل به متن" : "ضبط صوت و تبدیل خودکار به متن"}
