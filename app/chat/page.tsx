@@ -107,6 +107,8 @@ export default function ChatPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedFilePreviewUrl, setSelectedFilePreviewUrl] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false); // وضعیت در حال تبدیل صوت به متن
+  
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
@@ -479,6 +481,7 @@ export default function ChatPage() {
     }
   };
 
+  // ضبط صدا و ارسال خودکار جهت تبدیل به متن (STT)
   const startRecording = async () => {
     try {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -506,15 +509,14 @@ export default function ChatPage() {
         }
       };
 
-      mediaRecorderRef.current.onstop = () => {
+      mediaRecorderRef.current.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: mediaRecorderRef.current?.mimeType || 'audio/webm' });
-        const audioFile = new File([audioBlob], `voice-message-${Date.now()}.webm`, { type: audioBlob.type });
-        const previewUrl = URL.createObjectURL(audioBlob);
-        
-        setSelectedFile(audioFile);
-        setSelectedFilePreviewUrl(previewUrl);
+        const audioFile = new File([audioBlob], `voice-${Date.now()}.webm`, { type: audioBlob.type });
         
         stream.getTracks().forEach(track => track.stop());
+
+        // ارسال به سرور جهت تبدیل صوت به متن
+        await transcribeAudioToServer(audioFile);
       };
 
       mediaRecorderRef.current.start();
@@ -538,6 +540,57 @@ export default function ChatPage() {
       stopRecording();
     } else {
       startRecording();
+    }
+  };
+
+  const transcribeAudioToServer = async (audioFile: File) => {
+    setIsTranscribing(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", audioFile);
+      if (conversationId) {
+        formData.append("conversationId", conversationId);
+      }
+
+      const res = await fetch("/api/ai/chat/", {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+
+      const responseText = await res.text();
+      let data = null;
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {}
+
+      if (res.ok && data) {
+        const transcript = data?.transcript || data?.userMessage || "";
+        const assistantResponse = data?.response || data?.text || data?.message;
+
+        if (transcript) {
+          setInput(transcript); // متن استخراج‌شده درون تکس باکس قرار می‌گیرد
+        }
+
+        if (assistantResponse) {
+          if (!conversationId && data?.conversationId) {
+            setConversationId(data.conversationId);
+          }
+          setMessages((prev) => [
+            ...prev,
+            { role: "user", content: transcript || "🎤 پیام صوتی" },
+            { role: "assistant", content: assistantResponse }
+          ]);
+          fetchConversationsList();
+        }
+      } else {
+        alert("خطا در تبدیل صوت به متن.");
+      }
+    } catch (error) {
+      console.error("Transcription error:", error);
+      alert("خطای شبکه در پردازش صوت.");
+    } finally {
+      setIsTranscribing(false);
     }
   };
 
@@ -566,21 +619,14 @@ export default function ChatPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if ((!input.trim() && !selectedFile) || isLoading) return;
+    if ((!input.trim() && !selectedFile) || isLoading || isTranscribing) return;
 
     const userMessageText = input.trim();
-    const audioUrl = selectedFile ? selectedFilePreviewUrl : undefined;
     const fileToSend = selectedFile;
-
-    const tempUserContent = userMessageText || "🎤 در حال پردازش صوت...";
     
     setMessages((prev) => [
       ...prev,
-      { 
-        role: "user", 
-        content: tempUserContent, 
-        ...(audioUrl ? { audioUrl } : {}) 
-      },
+      { role: "user", content: userMessageText || "📎 ارسال فایل پیوست" },
       { role: "assistant", content: "typing-indicator" }
     ]);
 
@@ -615,9 +661,7 @@ export default function ChatPage() {
       let data = null;
       try {
         data = JSON.parse(responseText);
-      } catch (e) {
-        // غیر جیسون
-      }
+      } catch (e) {}
       
       if (res.status === 403 || data?.error === "LIMIT_EXCEEDED" || data?.code === "TEMPORARY_LOCKED" || data?.error === "TEMPORARY_LOCKED") {
         setShowCreditModal(true);
@@ -645,21 +689,10 @@ export default function ChatPage() {
           setConversationId(data.conversationId);
         }
         
-        const userTranscript = data?.transcript || data?.userMessage || null;
         const assistantResponse = data?.response || data?.text || data?.message || "پاسخی دریافت نشد.";
 
         setMessages((prev) => {
           const newMsgs = prev.filter((msg) => msg.content !== "typing-indicator");
-          
-          if (fileToSend && userTranscript) {
-            for (let i = newMsgs.length - 1; i >= 0; i--) {
-              if (newMsgs[i].role === "user" && newMsgs[i].audioUrl && newMsgs[i].content === "🎤 در حال پردازش صوت...") {
-                newMsgs[i] = { ...newMsgs[i], content: userTranscript };
-                break;
-              }
-            }
-          }
-
           return [...newMsgs, { role: "assistant", content: assistantResponse }];
         });
 
@@ -896,12 +929,6 @@ export default function ChatPage() {
                   <>
                     <div className="whitespace-pre-wrap">{msg.content}</div>
 
-                    {msg.audioUrl && (
-                      <div className="mt-2">
-                        <audio controls src={msg.audioUrl} className="max-w-full h-8" />
-                      </div>
-                    )}
-
                     {/* دکمه کپی متن */}
                     {msg.content !== "typing-indicator" && (
                       <button
@@ -924,11 +951,11 @@ export default function ChatPage() {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* درخواست اول: دکمه شناور پیمایش سریع به بالای صفحه (فقط آیکون فلش) */}
+        {/* دکمه شناور پیمایش سریع به بالا (گوشه سمت چپ و پایین) */}
         {showScrollTopBtn && (
           <button
             onClick={scrollToTop}
-            className={`absolute bottom-24 left-1/2 -translate-x-1/2 z-30 w-10 h-10 rounded-full shadow-lg border flex items-center justify-center transition-all cursor-pointer ${
+            className={`absolute bottom-24 left-6 z-30 w-10 h-10 rounded-full shadow-lg border flex items-center justify-center transition-all cursor-pointer ${
               isDark 
                 ? "bg-slate-800/90 text-teal-400 border-slate-700 hover:bg-slate-700" 
                 : "bg-white/90 text-teal-600 border-slate-200 hover:bg-slate-50"
@@ -944,22 +971,22 @@ export default function ChatPage() {
           {selectedFilePreviewUrl && (
             <div className="mb-2 flex items-center gap-2 p-2 rounded-xl bg-teal-500/10 border border-teal-500/20 max-w-xs">
               <span className="text-xs text-teal-500 truncate flex-1">📎 {selectedFile?.name}</span>
-            <button onClick={clearSelectedFile} className="text-red-400 hover:text-red-500 text-xs px-1">✕</button>
+              <button onClick={clearSelectedFile} className="text-red-400 hover:text-red-500 text-xs px-1">✕</button>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="flex items-end gap-2 max-w-4xl mx-auto">
-            {/* درخواست دوم: تکس باکس با افکت چشمک‌زن و تغییر ظاهر در هنگام ضبط صوت */}
+            {/* تکس باکس با حالت پردازش صوت و افکت پالس قرمز */}
             <div className={`flex-1 flex items-center rounded-2xl border transition-all px-3 py-2 ${
-              isRecording 
+              isRecording || isTranscribing
                 ? "bg-red-500/10 border-red-500 animate-pulse" 
                 : isDark ? "bg-slate-950 border-slate-800 focus-within:border-teal-500" : "bg-slate-100 border-slate-200 focus-within:border-teal-500"
             }`}>
               
               <textarea
-                value={isRecording ? "🔴 در حال ضبط صوت... (برای توقف روی میکروفون کلیک کنید)" : input}
-                onChange={(e) => !isRecording && setInput(e.target.value)}
-                readOnly={isRecording}
+                value={isRecording ? "🔴 در حال ضبط صوت... (برای پایان روی میکروفون کلیک کنید)" : isTranscribing ? "⏳ در حال تبدیل صوت به متن..." : input}
+                onChange={(e) => !isRecording && !isTranscribing && setInput(e.target.value)}
+                readOnly={isRecording || isTranscribing}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
@@ -969,7 +996,7 @@ export default function ChatPage() {
                 rows={1}
                 placeholder={t("typeMessage")}
                 className={`w-full bg-transparent text-xs md:text-sm outline-none resize-none max-h-32 py-1 leading-relaxed ${
-                  isRecording 
+                  isRecording || isTranscribing
                     ? "text-red-500 font-medium placeholder-red-400" 
                     : isDark ? "text-slate-100 placeholder-slate-500" : "text-slate-800 placeholder-slate-400"
                 }`}
@@ -980,17 +1007,18 @@ export default function ChatPage() {
                 <button
                   type="button"
                   onClick={toggleRecording}
+                  disabled={isTranscribing}
                   className={`p-2 rounded-xl text-xs transition-colors cursor-pointer ${
                     isRecording 
                       ? "bg-red-500 text-white animate-bounce" 
                       : isDark ? "text-slate-400 hover:text-slate-200" : "text-slate-500 hover:text-slate-800"
                   }`}
-                  title={isRecording ? "توقف ضبط" : "ضبط صدا"}
+                  title={isRecording ? "توقف ضبط و تبدیل به متن" : "ضبط صوت و تبدیل خودکار به متن"}
                 >
                   🎤
                 </button>
 
-                {/* درخواست سوم: باز کردن طیف کامل فایل‌ها شامل تصاویر، PDF و اکسل */}
+                {/* پیوست تصویر، PDF یا اکسل */}
                 <label className={`p-2 rounded-xl text-xs cursor-pointer transition-colors ${isDark ? "text-slate-400 hover:text-slate-200" : "text-slate-500 hover:text-slate-800"}`} title="پیوست تصویر، PDF یا اکسل">
                   📎
                   <input
@@ -1010,10 +1038,10 @@ export default function ChatPage() {
 
             <button
               type="submit"
-              disabled={isLoading || (!input.trim() && !selectedFile)}
+              disabled={isLoading || isTranscribing || (!input.trim() && !selectedFile)}
               className="bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white px-4 py-3 rounded-2xl text-xs md:text-sm font-medium transition-all shrink-0 cursor-pointer shadow-lg shadow-teal-600/20"
             >
-              {isLoading ? "..." : t("send")}
+              {isLoading || isTranscribing ? "..." : t("send")}
             </button>
           </form>
         </div>
