@@ -121,7 +121,6 @@ export default function ChatPage() {
   const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
   const headerMenuRef = useRef<HTMLDivElement>(null);
 
-  // وضعیت اسکرول برای دکمه پیمایش سریع به بالا
   const [showScrollTopBtn, setShowScrollTopBtn] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
@@ -746,7 +745,6 @@ export default function ChatPage() {
                       <div className={`truncate font-medium flex-1 ${isDark ? "text-slate-200" : "text-slate-700"}`}>
                         {conv.title || t("untitledChat")}
                       </div>
-                      {/* دکمه‌های ویرایش و حذف همیشه نمایان برای موبایل و دسکتاپ */}
                       <div className="flex items-center gap-1 opacity-100 transition-opacity">
                         <button onClick={(e) => startEditing(e, conv)} className="text-slate-400 hover:text-teal-500 p-1" title="ویرایش">✏️</button>
                         <button onClick={(e) => handleDeleteConversation(e, conv.id)} className="text-slate-400 hover:text-red-400 p-1" title="حذف">🗑️</button>
@@ -904,7 +902,7 @@ export default function ChatPage() {
                       </div>
                     )}
 
-                    {/* دکمه کپی متن پیام */}
+                    {/* دکمه کپی متن */}
                     {msg.content !== "typing-indicator" && (
                       <button
                         onClick={() => {
@@ -926,36 +924,42 @@ export default function ChatPage() {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* دکمه شناور پیمایش سریع به بالای صفحه */}
+        {/* درخواست اول: دکمه شناور پیمایش سریع به بالای صفحه (فقط آیکون فلش) */}
         {showScrollTopBtn && (
           <button
             onClick={scrollToTop}
-            className={`absolute bottom-24 left-1/2 -translate-x-1/2 z-30 px-3.5 py-2 rounded-full shadow-lg border text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
+            className={`absolute bottom-24 left-1/2 -translate-x-1/2 z-30 w-10 h-10 rounded-full shadow-lg border flex items-center justify-center transition-all cursor-pointer ${
               isDark 
                 ? "bg-slate-800/90 text-teal-400 border-slate-700 hover:bg-slate-700" 
                 : "bg-white/90 text-teal-600 border-slate-200 hover:bg-slate-50"
             }`}
+            title="بازگشت به بالای صفحه"
           >
-            ↑ بازگشت به بالای صفحه
+            ↑
           </button>
         )}
 
-        {/* نوار پایین برای ارسال پیام (تکس باکس چندخطی) */}
+        {/* نوار پایین برای ارسال پیام */}
         <div className={`p-3 md:p-4 border-t ${isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"} shrink-0`}>
           {selectedFilePreviewUrl && (
             <div className="mb-2 flex items-center gap-2 p-2 rounded-xl bg-teal-500/10 border border-teal-500/20 max-w-xs">
               <span className="text-xs text-teal-500 truncate flex-1">📎 {selectedFile?.name}</span>
-              <button onClick={clearSelectedFile} className="text-red-400 hover:text-red-500 text-xs px-1">✕</button>
+            <button onClick={clearSelectedFile} className="text-red-400 hover:text-red-500 text-xs px-1">✕</button>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="flex items-end gap-2 max-w-4xl mx-auto">
-            <div className={`flex-1 flex items-center rounded-2xl border ${isDark ? "bg-slate-950 border-slate-800" : "bg-slate-100 border-slate-200"} px-3 py-2 focus-within:border-teal-500 transition-all`}>
+            {/* درخواست دوم: تکس باکس با افکت چشمک‌زن و تغییر ظاهر در هنگام ضبط صوت */}
+            <div className={`flex-1 flex items-center rounded-2xl border transition-all px-3 py-2 ${
+              isRecording 
+                ? "bg-red-500/10 border-red-500 animate-pulse" 
+                : isDark ? "bg-slate-950 border-slate-800 focus-within:border-teal-500" : "bg-slate-100 border-slate-200 focus-within:border-teal-500"
+            }`}>
               
-              {/* تکس باکس چندخطی */}
               <textarea
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
+                value={isRecording ? "🔴 در حال ضبط صوت... (برای توقف روی میکروفون کلیک کنید)" : input}
+                onChange={(e) => !isRecording && setInput(e.target.value)}
+                readOnly={isRecording}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
@@ -964,7 +968,11 @@ export default function ChatPage() {
                 }}
                 rows={1}
                 placeholder={t("typeMessage")}
-                className={`w-full bg-transparent text-xs md:text-sm outline-none resize-none max-h-32 py-1 leading-relaxed ${isDark ? "text-slate-100 placeholder-slate-500" : "text-slate-800 placeholder-slate-400"}`}
+                className={`w-full bg-transparent text-xs md:text-sm outline-none resize-none max-h-32 py-1 leading-relaxed ${
+                  isRecording 
+                    ? "text-red-500 font-medium placeholder-red-400" 
+                    : isDark ? "text-slate-100 placeholder-slate-500" : "text-slate-800 placeholder-slate-400"
+                }`}
                 style={{ minHeight: '24px' }}
               />
 
@@ -974,18 +982,20 @@ export default function ChatPage() {
                   onClick={toggleRecording}
                   className={`p-2 rounded-xl text-xs transition-colors cursor-pointer ${
                     isRecording 
-                      ? "bg-red-500 text-white animate-pulse" 
+                      ? "bg-red-500 text-white animate-bounce" 
                       : isDark ? "text-slate-400 hover:text-slate-200" : "text-slate-500 hover:text-slate-800"
                   }`}
-                  title="ضبط صدا"
+                  title={isRecording ? "توقف ضبط" : "ضبط صدا"}
                 >
                   🎤
                 </button>
 
-                <label className={`p-2 rounded-xl text-xs cursor-pointer transition-colors ${isDark ? "text-slate-400 hover:text-slate-200" : "text-slate-500 hover:text-slate-800"}`} title="پیوست فایل">
+                {/* درخواست سوم: باز کردن طیف کامل فایل‌ها شامل تصاویر، PDF و اکسل */}
+                <label className={`p-2 rounded-xl text-xs cursor-pointer transition-colors ${isDark ? "text-slate-400 hover:text-slate-200" : "text-slate-500 hover:text-slate-800"}`} title="پیوست تصویر، PDF یا اکسل">
                   📎
                   <input
                     type="file"
+                    accept="image/*,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
                     className="hidden"
                     onChange={(e) => {
                       if (e.target.files && e.target.files[0]) {
