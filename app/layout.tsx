@@ -3,6 +3,7 @@ import { LanguageProvider } from "@/app/context/LanguageContext";
 import { Lang } from "@/lib/dictionary";
 import IdleTimeout from "./components/IdleTimeout";
 import PrivacyShield from "./components/PrivacyShield";
+import PreventBackCache from "./components/PreventBackCache";
 import "./globals.css";
 
 export const metadata = {
@@ -25,6 +26,7 @@ export default async function RootLayout({
         <LanguageProvider defaultLang={currentLang}>
           <IdleTimeout>
             <PrivacyShield />
+            <PreventBackCache />
             {children}
           </IdleTimeout>
         </LanguageProvider>

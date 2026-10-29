@@ -644,10 +644,16 @@ export default function ChatPage() {
     setIsHeaderMenuOpen(false);
     setIsLoggingOut(true);
     try {
-      const res = await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
-      if (res.ok) window.location.href = "/auth";
+      // ۱. ارسال درخواست به سرور برای پاک کردن کوکی سشن
+      await fetch("/api/auth/logout", { 
+        method: "POST", 
+        credentials: "include" 
+      });
+    } catch (error) {
+      console.error("Logout error:", error);
     } finally {
-      setIsLoggingOut(false);
+      // ۲. هدایت قاطع به صفحه لاگین با رفرش کامل حافظه کلاینت
+      window.location.href = "/login";
     }
   };
 
