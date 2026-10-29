@@ -84,8 +84,9 @@ export default function ChatPage() {
     }
   }, []);
 
-  const t = (key: keyof typeof dictionary.fa) => {
-    return dictionary[lang]?.[key] || dictionary["fa"][key] || key;
+  // رفع خطای TypeScript با پذیرش string به جای کلیدهای محدود
+  const t = (key: string) => {
+    return (dictionary[lang] as any)?.[key] || (dictionary["fa"] as any)?.[key] || key;
   };
 
   const INITIAL_GREETING: Message = {
