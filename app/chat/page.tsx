@@ -642,17 +642,16 @@ export default function ChatPage() {
 
   const handleLogout = async () => {
     setIsHeaderMenuOpen(false);
-    setIsLoggingOut(true);
     try {
-      // ۱. ارسال درخواست به سرور برای پاک کردن کوکی سشن
+      // ارسال درخواست به سرور برای پاک کردن کوکی
       await fetch("/api/auth/logout", { 
         method: "POST", 
         credentials: "include" 
       });
     } catch (error) {
-      console.error("Logout error:", error);
+      console.error("Logout failed:", error);
     } finally {
-      // ۲. هدایت قاطع به صفحه لاگین با رفرش کامل حافظه کلاینت
+      // هدایت فوری و اجباری به صفحه لاگین بدون وابستگی به پاسخ موفقیت سرور
       window.location.href = "/login";
     }
   };
