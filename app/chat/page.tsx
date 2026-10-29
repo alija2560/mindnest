@@ -642,9 +642,10 @@ export default function ChatPage() {
 
   const handleLogout = async () => {
     setIsHeaderMenuOpen(false);
-    
+    setIsLoggingOut(true);
+
     try {
-      // ۱. درخواست به سرور برای پاک کردن کوکی
+      // ۱. درخواست به سرور برای پاکسازی سشن و کوکی nava_session
       await fetch("/api/auth/logout", { 
         method: "POST", 
         credentials: "include" 
@@ -653,11 +654,12 @@ export default function ChatPage() {
       console.error("Logout failed:", error);
     }
 
-    // ۲. پاکسازی صریح و فوری کوکی در سمت کلاینت (برای گول زدن و خنثی کردن میدلویر)
+    // ۲. پاکسازی صریح کوکی از تمام مسیرها در سمت کلاینت
     document.cookie = "nava_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    document.cookie = `nava_session=; path=/; domain=${window.location.hostname}; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
 
-    // ۳. هدایت قطعی به صفحه لاگین
-    window.location.href = "/login";
+    // ۳. هدایت اجباری و جایگزینی تاریخچه مرورگر (مانع از کار کردن دکمه Back می‌شود)
+    window.location.replace("/login");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

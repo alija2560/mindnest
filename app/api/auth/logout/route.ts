@@ -7,19 +7,27 @@ export async function POST() {
       message: "با موفقیت از سیستم خارج شدید" 
     });
     
-    // پاک کردن کوکی احراز هویت با تنظیم انقضای آنی
+    // پاک کردن کوکی اصلی احراز هویت پروژه شما (nava_session)
+    response.cookies.set({
+      name: "nava_session",
+      value: "",
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 0, // حذف آنی کوکی
+      path: "/",
+    });
+
+    // اگر کوکی دیگری مثل token هم در پروژه ذخیره می‌شود، آن را هم پاک می‌کنیم
     response.cookies.set({
       name: "token",
       value: "",
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 0, // حذف آنی کوکی
+      sameSite: "lax",
+      maxAge: 0,
       path: "/",
     });
-
-    // اگر احیاناً کوکی دیگری برای نشست (Session) دارید می‌توانید اینجا مشابه بالا اضافه کنید
-    // response.cookies.set({ name: "session", value: "", maxAge: 0, path: "/" });
 
     return response;
   } catch (error) {
