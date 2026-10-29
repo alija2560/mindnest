@@ -642,18 +642,22 @@ export default function ChatPage() {
 
   const handleLogout = async () => {
     setIsHeaderMenuOpen(false);
+    
     try {
-      // ارسال درخواست به سرور برای پاک کردن کوکی
+      // ۱. درخواست به سرور برای پاک کردن کوکی
       await fetch("/api/auth/logout", { 
         method: "POST", 
         credentials: "include" 
       });
     } catch (error) {
       console.error("Logout failed:", error);
-    } finally {
-      // هدایت فوری و اجباری به صفحه لاگین بدون وابستگی به پاسخ موفقیت سرور
-      window.location.href = "/login";
     }
+
+    // ۲. پاکسازی صریح و فوری کوکی در سمت کلاینت (برای گول زدن و خنثی کردن میدلویر)
+    document.cookie = "nava_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+
+    // ۳. هدایت قطعی به صفحه لاگین
+    window.location.href = "/login";
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
