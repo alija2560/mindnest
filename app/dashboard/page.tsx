@@ -34,8 +34,8 @@ export default async function DashboardPage() {
 
   // دریافت زبان از کوکی برای همگام‌سازی کامل با سمت سرور
   const currentLang = (cookieStore.get("nava_lang")?.value as Lang) || "fa";
-  const t = (key: keyof typeof dictionary.fa) => {
-    return dictionary[currentLang][key] || dictionary["fa"][key] || key;
+  const t = (key: string) => {
+    return (dictionary[currentLang] as any)?.[key] || (dictionary["fa"] as any)?.[key] || key;
   };
 
   // بررسی وضعیت اشتراک زمانی فعال کاربر
@@ -55,24 +55,18 @@ export default async function DashboardPage() {
     const expireDate = new Date(user.subscriptionExpiresAt);
     const diffTime = expireDate.getTime() - now.getTime();
     
-    // محاسبه دقیق روزهای باقی‌مانده تا انقضا
     remainingSubscriptionDays = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
-
-    // تشخیص پویای نوع پکیج (۱ ماهه = ۳۰ روز، ۳ ماهه = ۹۰ روز، ۶ ماهه = ۱۸۰ روز)
     const packageDays = remainingSubscriptionDays <= 35 ? 30 : remainingSubscriptionDays <= 100 ? 90 : 180;
     
-    // محاسبه دقیق تاریخ شروع با کسر دقیق تعداد روزهای پکیج
     const startDate = new Date(expireDate.getTime() - (packageDays * 24 * 60 * 60 * 1000));
     startDate.setDate(startDate.getDate() + 1);
 
-    // فرمت کردن تاریخ شروع
     formattedStartDate = startDate.toLocaleDateString(currentLang === 'fa' ? 'fa-IR-u-nu-latn' : 'en-US', { 
       year: 'numeric', 
       month: '2-digit', 
       day: '2-digit' 
     });
 
-    // فرمت کردن تاریخ پایان
     formattedEndDate = expireDate.toLocaleDateString(currentLang === 'fa' ? 'fa-IR-u-nu-latn' : 'en-US', { 
       year: 'numeric', 
       month: '2-digit', 
@@ -80,25 +74,20 @@ export default async function DashboardPage() {
     });
   }
 
-  // محاسبه سهمیه باقی‌مانده رایگان (۵۰ پیام هدیه اولیه)
+  // محاسبه سهمیه باقی‌مانده رایگان
   const FREE_LIMIT = 50;
   const messageCount = user?.messageCount || 0;
   const remainingFree = Math.max(0, FREE_LIMIT - messageCount);
-
-  // محاسبه درصد پیشرفت مصرف سهمیه رایگان
   const freeProgressPercent = Math.min(100, Math.round((messageCount / FREE_LIMIT) * 100));
 
   // بررسی دسترسی ادمین
   const isAdmin = user?.isAdmin || user?.role === 'ADMIN';
 
-  // شرط تیکت‌های نیازمند بررسی برای ادمین
-  
   const unresolvedTicketCondition = {
-  status: { in: ["OPEN", "IN_PROGRESS"] as TicketStatus[] },
-  isRead: false 
+    status: { in: ["OPEN", "IN_PROGRESS"] as TicketStatus[] },
+    isRead: false 
   };
 
-  // 🎯 شمارشگر تیکت‌های نیازمند توجه
   const pendingTicketsCount = isAdmin
     ? await prisma.ticket.count({ where: unresolvedTicketCondition }).catch(() => 0)
     : await prisma.ticket.count({ 
@@ -109,7 +98,6 @@ export default async function DashboardPage() {
         } 
       }).catch(() => 0);
 
-  // 🎯 لیست تیکت‌های داشبورد
   const recentTickets = isAdmin
     ? await prisma.ticket.findMany({
         where: unresolvedTicketCondition,
@@ -128,50 +116,58 @@ export default async function DashboardPage() {
       }).catch(() => []);
 
   return (
-    <div className="min-h-screen bg-[#06080d] text-slate-100 font-sans p-4 md:p-8 selection:bg-teal-500 selection:text-slate-950 relative overflow-hidden">
+    <div dir={currentLang === 'fa' ? 'rtl' : 'ltr'} className="min-h-screen bg-[#06080d] text-slate-100 font-sans p-3 sm:p-5 md:p-8 selection:bg-teal-500 selection:text-slate-950 relative overflow-x-hidden">
       
-      {/* نورپردازی پس‌‌زمینه پویا بر اساس سطح دسترسی */}
-      <div className={`absolute top-0 right-1/4 w-[500px] h-[350px] ${isAdmin ? 'bg-indigo-500/10' : 'bg-teal-500/5'} blur-[140px] pointer-events-none rounded-full`}></div>
-      <div className="absolute bottom-1/4 left-1/4 w-[400px] h-[300px] bg-emerald-500/5 blur-[140px] pointer-events-none rounded-full"></div>
+      {/* نورپردازی پس‌زمینه */}
+      <div className={`absolute top-0 right-1/4 w-[300px] sm:w-[500px] h-[250px] sm:h-[350px] ${isAdmin ? 'bg-indigo-500/10' : 'bg-teal-500/5'} blur-[120px] pointer-events-none rounded-full`}></div>
+      <div className="absolute bottom-1/4 left-1/4 w-[250px] sm:w-[400px] h-[200px] sm:h-[300px] bg-emerald-500/5 blur-[120px] pointer-events-none rounded-full"></div>
 
-      <div className="max-w-6xl mx-auto space-y-6 relative z-10">
+      <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6 relative z-10">
         
-        {/* هدر هوشمند */}
-        <header className="flex items-center justify-between gap-4 bg-slate-900/60 backdrop-blur-2xl border border-slate-800/80 px-6 py-4 rounded-3xl shadow-2xl">
-          <div className="flex items-center gap-3.5">
-            <div className="relative group">
-              <div className={`absolute -inset-1 bg-gradient-to-r ${isAdmin ? 'from-indigo-500 to-teal-500' : 'from-teal-500 to-emerald-500'} rounded-2xl blur opacity-30 group-hover:opacity-75 transition duration-500`}></div>
-              <div className="relative bg-slate-950 p-2.5 rounded-2xl border border-slate-800 shadow-inner">
-                <NavaLogo className="w-8 h-8 drop-shadow-md" />
+        {/* هدر ریسپانسیو */}
+        <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-slate-900/60 backdrop-blur-2xl border border-slate-800/80 px-4 sm:px-6 py-4 rounded-3xl shadow-2xl">
+          <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
+            <div className="flex items-center gap-3">
+              <div className="relative group shrink-0">
+                <div className={`absolute -inset-1 bg-gradient-to-r ${isAdmin ? 'from-indigo-500 to-teal-500' : 'from-teal-500 to-emerald-500'} rounded-2xl blur opacity-30`}></div>
+                <div className="relative bg-slate-950 p-2.5 rounded-2xl border border-slate-800 shadow-inner">
+                  <NavaLogo className="w-7 h-7 sm:w-8 sm:h-8 drop-shadow-md" />
+                </div>
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="font-extrabold text-slate-100 text-xs sm:text-sm tracking-wide">
+                    {isAdmin ? t("adminTitle") : t("dashboardTitle")}
+                  </h1>
+                  <span className={`text-[10px] ${isAdmin ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' : 'bg-teal-500/10 text-teal-400 border-teal-500/20'} border px-2 py-0.5 rounded-full font-mono font-semibold`}>
+                    {isAdmin ? "Admin" : "Pro v2.5"}
+                  </span>
+                </div>
+                <p className="text-[11px] sm:text-xs text-slate-400 mt-0.5 truncate max-w-[200px] sm:max-w-none">
+                  {t("welcome")} <span className={`${isAdmin ? 'text-indigo-400' : 'text-teal-400'} font-medium`}>{user?.name || "User"}</span> {t("welcomeSuffix")}
+                </p>
               </div>
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="font-extrabold text-slate-100 text-sm tracking-wide">
-                  {isAdmin ? t("adminTitle") : t("dashboardTitle")}
-                </h1>
-                <span className={`text-[10px] ${isAdmin ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' : 'bg-teal-500/10 text-teal-400 border-teal-500/20'} border px-2 py-0.5 rounded-full font-mono font-semibold`}>
-                  {isAdmin ? "Admin Control" : "v2.5 Pro"}
-                </span>
-              </div>
-              <p className="text-xs text-slate-400 mt-0.5">
-                {t("welcome")} <span className={`${isAdmin ? 'text-indigo-400' : 'text-teal-400'} font-medium`}>{user?.name || "User"}</span> {t("welcomeSuffix")}
-              </p>
+
+            {/* سوییچ زبان در موبایل (بالا سمت چپ/راست) */}
+            <div className="sm:hidden">
+              <LanguageSwitcher />
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {/* 🌐 دکمه تغییر زبان */}
-            <LanguageSwitcher />
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-800/80">
+            <div className="hidden sm:block">
+              <LanguageSwitcher />
+            </div>
 
             <Link
               href="/profile"
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-xs text-slate-300 hover:text-teal-400 transition-all shadow-sm backdrop-blur-md"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 hover:text-teal-400 transition-all shadow-sm"
             >
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
               </svg>
-              <span className="hidden sm:inline">{t("profile")}</span>
+              <span>{t("profile")}</span>
             </Link>
 
             <form
@@ -189,29 +185,29 @@ export default async function DashboardPage() {
             >
               <button
                 type="submit"
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900/80 hover:bg-red-500/10 border border-slate-800 hover:border-red-500/30 text-xs text-slate-300 hover:text-red-400 transition-all cursor-pointer shadow-sm backdrop-blur-md"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900/80 hover:bg-red-500/10 border border-slate-800 hover:border-red-500/30 text-xs text-slate-300 hover:text-red-400 transition-all cursor-pointer shadow-sm"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 rotate-180">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
                 </svg>   
-                <span className="hidden sm:inline">{t("logout")}</span>
+                <span>{t("logout")}</span>
               </button>
             </form>
           </div>
         </header>
 
-        {/* ساختار Bento Grid مدرن */}
-        <main className="grid grid-cols-1 md:grid-cols-12 gap-5">
+        {/* بِنْتُو گرید ریسپانسیو */}
+        <main className="grid grid-cols-1 md:grid-cols-12 gap-4 sm:gap-5">
           
-          {/* کارت هیروی اصلی (ورود به چت) */}
-          <div className="md:col-span-7 bg-gradient-to-br from-slate-900 via-slate-900/80 to-slate-950 border border-slate-800/80 p-7 rounded-3xl shadow-2xl relative overflow-hidden flex flex-col justify-between group backdrop-blur-xl">
-            <div className="absolute -right-10 -top-10 w-40 h-40 bg-teal-500/10 rounded-full blur-3xl group-hover:bg-teal-500/20 transition-all"></div>
+          {/* کارت هیرو */}
+          <div className="md:col-span-7 bg-gradient-to-br from-slate-900 via-slate-900/80 to-slate-950 border border-slate-800/80 p-5 sm:p-7 rounded-3xl shadow-2xl relative overflow-hidden flex flex-col justify-between group backdrop-blur-xl">
+            <div className="absolute -right-10 -top-10 w-40 h-40 bg-teal-500/10 rounded-full blur-3xl"></div>
             
             <div className="space-y-3 relative z-10">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-500/10 border border-teal-500/25 text-teal-400 text-[11px] font-semibold">
                 {t("heroBadge")}
               </span>
-              <h2 className="text-xl md:text-2xl font-black text-slate-100 tracking-tight">
+              <h2 className="text-lg sm:text-2xl font-black text-slate-100 tracking-tight">
                 {t("heroHeading")}
               </h2>
               <p className="text-xs text-slate-400 leading-relaxed max-w-md">
@@ -222,7 +218,7 @@ export default async function DashboardPage() {
             <div className="pt-6 relative z-10 flex flex-wrap items-center gap-3">
               <Link
                 href="/chat"
-                className="inline-flex items-center gap-2 bg-gradient-to-r from-teal-500 to-emerald-400 hover:from-teal-400 hover:to-emerald-300 text-slate-950 font-bold px-5 py-3 rounded-2xl transition-all shadow-lg shadow-teal-500/20 text-xs hover:scale-[1.02] active:scale-[0.98]"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-gradient-to-r from-teal-500 to-emerald-400 hover:from-teal-400 hover:to-emerald-300 text-slate-950 font-bold px-5 py-3 rounded-2xl transition-all shadow-lg shadow-teal-500/20 text-xs"
               >
                 <span>{t("chatButton")}</span>
                 <span>←</span>
@@ -230,10 +226,8 @@ export default async function DashboardPage() {
             </div>
           </div>
 
-          {/* کارت وضعیت سهمیه رایگان / اشتراک */}
-          <div className="md:col-span-5 bg-slate-900/80 backdrop-blur-xl border border-slate-800/80 p-6 rounded-3xl shadow-xl relative overflow-hidden flex flex-col justify-between group hover:border-teal-500/40 transition-all">
-            <div className="absolute -left-6 -bottom-6 w-24 h-24 bg-teal-500/10 rounded-full blur-2xl"></div>
-            
+          {/* سهمیه / اشتراک */}
+          <div className="md:col-span-5 bg-slate-900/80 backdrop-blur-xl border border-slate-800/80 p-5 sm:p-6 rounded-3xl shadow-xl relative overflow-hidden flex flex-col justify-between">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-slate-400">{t("quotaStatus")}</span>
               <span className="p-2.5 bg-teal-500/10 text-teal-400 rounded-2xl text-sm border border-teal-500/20">⏳</span>
@@ -242,8 +236,8 @@ export default async function DashboardPage() {
             <div className="my-3">
               {isSubscribed ? (
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="text-base font-black text-emerald-400 tracking-tight">
+                  <div className="flex items-center justify-between flex-wrap gap-1">
+                    <div className="text-sm sm:text-base font-black text-emerald-400 tracking-tight">
                       {t("activePro")} <span className="text-[10px] font-normal text-slate-400">{t("unlimited")}</span>
                     </div>
                     <span className="px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[11px] font-bold rounded-xl font-mono">
@@ -254,21 +248,17 @@ export default async function DashboardPage() {
                   <div className="text-[11px] text-slate-300 space-y-2 bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800/80 shadow-inner">
                     <div className="flex justify-between items-center">
                       <span className="text-slate-400">{t("startDate")}</span>
-                      <span className="font-mono font-medium text-slate-200 tracking-wider" dir="ltr">
-                        {formattedStartDate}
-                      </span>
+                      <span className="font-mono font-medium text-slate-200" dir="ltr">{formattedStartDate}</span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-slate-400">{t("endDate")}</span>
-                      <span className="font-mono font-bold text-emerald-400 tracking-wider" dir="ltr">
-                        {formattedEndDate}
-                      </span>
+                      <span className="font-mono font-bold text-emerald-400" dir="ltr">{formattedEndDate}</span>
                     </div>
                   </div>
                 </div>
               ) : (
                 <div>
-                  <div className="text-3xl font-black text-teal-400 tracking-tight mb-1">
+                  <div className="text-2xl sm:text-3xl font-black text-teal-400 tracking-tight mb-1">
                     {remainingFree} <span className="text-xs font-normal text-slate-400">{t("freeMessagesLeft")}</span>
                   </div>
                   <div className="w-full bg-slate-950 h-2.5 rounded-full overflow-hidden border border-slate-800 mt-3 shadow-inner">
@@ -289,14 +279,14 @@ export default async function DashboardPage() {
             </div>
           </div>
 
-          {/* کارت اشتراک زمانی */}
-          <div className="md:col-span-4 bg-slate-900/80 backdrop-blur-xl border border-slate-800/80 p-6 rounded-3xl shadow-xl relative overflow-hidden flex flex-col justify-between group hover:border-emerald-500/40 transition-all">
+          {/* اشتراک زمانی */}
+          <div className="md:col-span-4 bg-slate-900/80 backdrop-blur-xl border border-slate-800/80 p-5 sm:p-6 rounded-3xl shadow-xl flex flex-col justify-between">
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-semibold text-slate-400">{t("subscriptionPackages")}</span>
               <span className="p-2.5 bg-emerald-500/10 text-emerald-400 rounded-2xl text-sm border border-emerald-500/20">⚡</span>
             </div>
             <div>
-              <div className="text-lg font-black text-emerald-400 tracking-tight mb-2">
+              <div className="text-base sm:text-lg font-black text-emerald-400 tracking-tight mb-2">
                 {isSubscribed ? t("renewOrUpgrade") : t("buyUnlimited")}
               </div>
               <p className="text-[11px] text-slate-400 mb-3">
@@ -304,7 +294,7 @@ export default async function DashboardPage() {
               </p>
               <Link 
                 href="/credit" 
-                className="inline-flex items-center gap-1.5 text-xs text-emerald-400 hover:text-emerald-300 font-medium transition-colors"
+                className="inline-flex items-center gap-1.5 text-xs text-emerald-400 hover:text-emerald-300 font-medium"
               >
                 <span>{t("viewSubscriptions")}</span>
                 <span>←</span>
@@ -312,14 +302,14 @@ export default async function DashboardPage() {
             </div>
           </div>
 
-          {/* کارت سطح دسترسی */}
-          <div className="md:col-span-4 bg-slate-900/80 backdrop-blur-xl border border-slate-800/80 p-6 rounded-3xl shadow-xl relative overflow-hidden flex flex-col justify-between group hover:border-indigo-500/40 transition-all">
+          {/* سطح دسترسی */}
+          <div className="md:col-span-4 bg-slate-900/80 backdrop-blur-xl border border-slate-800/80 p-5 sm:p-6 rounded-3xl shadow-xl flex flex-col justify-between">
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-semibold text-slate-400">{t("accessLevel")}</span>
-              <span className="p-2.5 bg-indigo-500/10 text-indigo-400 border-indigo-500/20 rounded-2xl text-sm border">🔒</span>
+              <span className="p-2.5 bg-indigo-500/10 text-indigo-400 rounded-2xl text-sm border border-indigo-500/20">🔒</span>
             </div>
             <div>
-              <div className="text-sm font-bold text-slate-200 mb-1 flex items-center gap-2">
+              <div className="text-xs sm:text-sm font-bold text-slate-200 mb-1 flex items-center gap-2">
                 <span className={`w-2.5 h-2.5 rounded-full ${isAdmin ? 'bg-indigo-400' : 'bg-emerald-400'} animate-pulse`}></span>
                 {isAdmin ? t("adminRole") : t("verifiedUser")}
               </div>
@@ -329,7 +319,7 @@ export default async function DashboardPage() {
             </div>
           </div>
 
-          {/* ابزارهای سریع / پنل مدیریت ادمین */}
+          {/* ابزارهای سریع */}
           <div className="md:col-span-4 bg-slate-900/80 backdrop-blur-xl border border-slate-800/80 p-5 rounded-3xl shadow-xl flex flex-col justify-between space-y-3">
             <span className="text-xs font-semibold text-slate-400 px-1">
               {isAdmin ? t("quickToolsAdmin") : t("quickToolsUser")}
@@ -378,9 +368,9 @@ export default async function DashboardPage() {
           </div>
 
           {/* تیکت‌ها و پیام‌ها */}
-          <div className="md:col-span-7 bg-slate-900/80 backdrop-blur-xl border border-slate-800/80 p-7 rounded-3xl shadow-2xl space-y-5">
+          <div className="md:col-span-7 bg-slate-900/80 backdrop-blur-xl border border-slate-800/80 p-5 sm:p-7 rounded-3xl shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
-              <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2">
+              <h3 className="text-xs sm:text-sm font-bold text-slate-200 flex items-center gap-2">
                 <span>🎫</span> {isAdmin ? t("ticketsAdminHeading") : t("ticketsUserHeading")}
               </h3>
               <Link href="/tickets" className="text-xs text-teal-400 hover:text-teal-300 font-semibold transition-colors">
@@ -412,11 +402,11 @@ export default async function DashboardPage() {
                   >
                     <button 
                       type="submit"
-                      className="w-full text-right bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800/80 hover:border-teal-500/40 transition-all flex items-center justify-between gap-3 group shadow-inner cursor-pointer"
+                      className="w-full text-right bg-slate-950/60 p-3 sm:p-3.5 rounded-2xl border border-slate-800/80 hover:border-teal-500/40 transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 group shadow-inner cursor-pointer"
                     >
-                      <div className="space-y-1 overflow-hidden">
+                      <div className="space-y-1 overflow-hidden w-full sm:w-auto">
                         {isAdmin && (
-                          <div className="text-[10px] text-indigo-400 font-medium flex items-center gap-1.5">
+                          <div className="text-[10px] text-indigo-400 font-medium flex items-center gap-1.5 flex-wrap">
                             <span>{t("sender")}</span>
                             <span className="text-slate-200">{ticket.user?.name || t("unnamed")}</span>
                             <span className="text-slate-500">({ticket.user?.phone})</span>
@@ -426,7 +416,7 @@ export default async function DashboardPage() {
                           {ticket.subject}
                         </h4>
                       </div>
-                      <div className="flex items-center gap-3 shrink-0">
+                      <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
                         {!isAdmin && ticket.hasUnreadResponse ? (
                           <span className="bg-emerald-500 text-slate-950 font-bold text-[10px] px-3 py-1 rounded-full animate-bounce shadow-lg">
                             {t("newAdminResponse")}
@@ -445,17 +435,17 @@ export default async function DashboardPage() {
           </div>
 
           {/* اطلاعات حساب کاربری */}
-          <div className="md:col-span-5 bg-slate-900/80 backdrop-blur-xl border border-slate-800/80 p-7 rounded-3xl shadow-2xl space-y-4">
+          <div className="md:col-span-5 bg-slate-900/80 backdrop-blur-xl border border-slate-800/80 p-5 sm:p-7 rounded-3xl shadow-2xl space-y-4">
             <div className="border-b border-slate-800/80 pb-3">
-              <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2">
+              <h3 className="text-xs sm:text-sm font-bold text-slate-200 flex items-center gap-2">
                 <span>📋</span> {t("userInfo")}
               </h3>
             </div>
 
-            <div className="space-y-3 text-xs bg-slate-950/50 p-5 rounded-2xl border border-slate-800/80 shadow-inner">
+            <div className="space-y-3 text-xs bg-slate-950/50 p-4 sm:p-5 rounded-2xl border border-slate-800/80 shadow-inner">
               <div className="flex justify-between items-center pb-2.5 border-b border-slate-900">
                 <span className="text-slate-400">{t("nameLabel")}</span> 
-                <span className="font-semibold text-slate-200">{user?.name || t("notRegistered")}</span>
+                <span className="font-semibold text-slate-200 truncate max-w-[150px]">{user?.name || t("notRegistered")}</span>
               </div>
               <div className="flex justify-between items-center pb-2.5 border-b border-slate-900">
                 <span className="text-slate-400">{t("phoneLabel")}</span> 
@@ -463,7 +453,7 @@ export default async function DashboardPage() {
               </div>
               <div className="flex justify-between items-center pb-2.5 border-b border-slate-900">
                 <span className="text-slate-400">{t("emailLabel")}</span> 
-                <span className="font-semibold text-slate-200">{user?.email || t("notRegistered")}</span>
+                <span className="font-semibold text-slate-200 truncate max-w-[150px]">{user?.email || t("notRegistered")}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-400">{t("idLabel")}</span> 
