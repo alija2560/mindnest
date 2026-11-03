@@ -125,6 +125,21 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // 🛡️ حذف خودکار پیام‌های قدیمی‌تر از ۷ روزِ کاربر جهت حفظ حریم خصوصی
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    await prisma.message.deleteMany({
+      where: {
+        conversation: {
+          userId: userId,
+        },
+        createdAt: {
+          lt: sevenDaysAgo,
+        },
+      },
+    }).catch(() => null);
+
     const { searchParams } = new URL(req.url);
     const conversationId = searchParams.get("conversationId");
 
@@ -136,6 +151,9 @@ export async function GET(req: Request) {
       where: { id: conversationId, userId },
       include: { 
         messages: { 
+          where: {
+            createdAt: { gte: sevenDaysAgo }
+          },
           orderBy: { createdAt: "asc" } 
         } 
       },
@@ -165,6 +183,21 @@ export async function POST(req: Request) {
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    // 🛡️ حذف خودکار پیام‌های منقضی‌شده (بیشتر از ۷ روز) در هر بار ارسال پیام
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    await prisma.message.deleteMany({
+      where: {
+        conversation: {
+          userId: userId,
+        },
+        createdAt: {
+          lt: sevenDaysAgo,
+        },
+      },
+    }).catch((err) => console.error("Auto-delete cleanup error:", err));
 
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
@@ -346,9 +379,12 @@ export async function POST(req: Request) {
       });
     }
 
-    // دریافت تاریخچه پیام‌ها
+    // دریافت تاریخچه پیام‌ها (فقط ۷ روز اخیر)
     const allMessages = await prisma.message.findMany({
-      where: { conversationId },
+      where: { 
+        conversationId,
+        createdAt: { gte: sevenDaysAgo }
+      },
       orderBy: { createdAt: "asc" },
     });
 
