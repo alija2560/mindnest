@@ -18,7 +18,7 @@ interface ConversationItem {
   updatedAt: string;
 }
 
-// لیستی از پیام‌های خوش‌آمدگویی متفاوت، صمیمی و الهام‌بخش (تغییر رندوم در هر ورود یا شروع چت جدید)
+// لیستی از پیام‌های خوش‌آمدگویی متفاوت، صمیمی و الهام‌بخش
 const GREETING_MESSAGES = {
   fa: [
     "سلام دوست عزیزم. من «نوا» هستم؛ همراه و گوش شنوای تو. امروز حالت چطوره؟ هر چیزی که ذهنت رو درگیر کرده می‌تونی راحت با من در میان بذاری.",
@@ -51,7 +51,7 @@ const TypingIndicator = ({ isDark }: { isDark: boolean }) => {
       <div className={`w-2 h-2 ${isDark ? "bg-slate-500" : "bg-slate-400"} rounded-full animate-bounce [animation-delay:-0.3s]`}></div>
       <div className={`w-2 h-2 ${isDark ? "bg-slate-500" : "bg-slate-400"} rounded-full animate-bounce [animation-delay:-0.15s]`}></div>
       <div className={`w-2 h-2 ${isDark ? "bg-slate-500" : "bg-slate-400"} rounded-full animate-bounce`}></div>
-      <span className={`text-xs ${isDark ? "text-slate-500" : "text-slate-400"}`}>در حال نوشتن...</span>
+      <span className={`text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>در حال نوشتن...</span>
     </div>
   );
 };
@@ -120,7 +120,6 @@ export default function ChatPage() {
   const [showCreditModal, setShowCreditModal] = useState(false);
   const [modalMessage, setModalMessage] = useState("سهمیه پیام‌های رایگان شما به اتمام رسیده است.");
   
-  // نمایش پاپ‌آپ حریم خصوصی پس از ارسال اولین پیام
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [hasSentFirstMessage, setHasSentFirstMessage] = useState(false);
   
@@ -512,7 +511,6 @@ export default function ChatPage() {
     }
   };
 
-  // بررسی ارسال اولین پیام برای نمایش پاپ‌آپ حریم خصوصی
   const checkFirstMessagePrivacyTrigger = () => {
     if (!hasSentFirstMessage) {
       const hasSeenPrivacy = localStorage.getItem("nava_privacy_modal_seen");
@@ -586,6 +584,9 @@ export default function ChatPage() {
 
   const transcribeAudioToServer = async (audioFile: File) => {
     setIsTranscribing(true);
+    // فقط نشانگر تایپ ربات فعال می‌شود و هیچ پیام متنی یا حباب موقتی قبل از دریافت پاسخ ثبت نمی‌شود
+    setMessages((prev) => [...prev, { role: "assistant", content: "typing-indicator" }]);
+
     try {
       const formData = new FormData();
       formData.append("audio", audioFile);
@@ -608,9 +609,10 @@ export default function ChatPage() {
         data = JSON.parse(responseText);
       } catch (e) {}
 
-      if (res.status === 403 || data?.error === "LIMIT_EXCEEDED" || data?.code === "TEMPORARY_LOCKED" || data?.error === "TEMPORARY_LOCKED") {
+      if (res.status === 403 || data?.error === "LIMIT_EXCEEDED" || data?.code === "TEMPORARY_LOCKED") {
         setShowCreditModal(true);
         setModalMessage(data?.message || t("outOfQuota"));
+        setMessages((prev) => prev.filter((msg) => msg.content !== "typing-indicator"));
         setIsTranscribing(false);
         return;
       }
@@ -636,19 +638,24 @@ export default function ChatPage() {
         const transcript = data?.transcribedText || data?.transcript || data?.userMessage || "🎤 پیام صوتی";
         const assistantResponse = data?.response || data?.text || data?.message || "پاسخی دریافت نشد.";
 
-        setMessages((prev) => [
-          ...prev,
-          { role: "user", content: transcript },
-          { role: "assistant", content: assistantResponse }
-        ]);
+        setMessages((prev) => {
+          const filtered = prev.filter((msg) => msg.content !== "typing-indicator");
+          return [
+            ...filtered,
+            { role: "user", content: transcript },
+            { role: "assistant", content: assistantResponse }
+          ];
+        });
 
         fetchConversationsList();
       } else {
         alert("خطا در تبدیل صوت به متن: " + (data?.error || "خطای سرور"));
+        setMessages((prev) => prev.filter((msg) => msg.content !== "typing-indicator"));
       }
     } catch (error) {
       console.error("Transcription error:", error);
       alert("خطای شبکه در پردازش صوت.");
+      setMessages((prev) => prev.filter((msg) => msg.content !== "typing-indicator"));
     } finally {
       setIsTranscribing(false);
     }
@@ -689,7 +696,6 @@ export default function ChatPage() {
     e.preventDefault();
     if ((!input.trim() && !selectedFile) || isLoading || isTranscribing) return;
 
-    // تریگر نمایش پاپ‌آپ حریم خصوصی پس از ارسال اولین پیام
     checkFirstMessagePrivacyTrigger();
 
     const userMessageText = input.trim();
@@ -734,7 +740,7 @@ export default function ChatPage() {
         data = JSON.parse(responseText);
       } catch (e) {}
       
-      if (res.status === 403 || data?.error === "LIMIT_EXCEEDED" || data?.code === "TEMPORARY_LOCKED" || data?.error === "TEMPORARY_LOCKED") {
+      if (res.status === 403 || data?.error === "LIMIT_EXCEEDED" || data?.code === "TEMPORARY_LOCKED") {
         setShowCreditModal(true);
         setModalMessage(data?.message || t("outOfQuota"));
         setMessages((prev) => prev.filter((msg) => msg.content !== "typing-indicator"));
@@ -789,10 +795,18 @@ export default function ChatPage() {
   const isDark = theme === "dark";
 
   return (
-    <div dir={lang === 'fa' ? 'rtl' : 'ltr'} className={`flex h-screen w-screen font-sans overflow-hidden ${isDark ? "bg-slate-950 text-slate-100" : "bg-slate-50 text-slate-800"}`}>
+    <div dir={lang === 'fa' ? 'rtl' : 'ltr'} className={`flex h-[100dvh] w-screen font-sans overflow-hidden ${isDark ? "bg-slate-950 text-slate-100" : "bg-slate-50 text-slate-800"}`}>
       
+      {/* اوورلی سایدبار در موبایل */}
+      {isSidebarOpen && (
+        <div 
+          onClick={() => setIsSidebarOpen(false)} 
+          className="fixed inset-0 bg-black/50 z-30 md:hidden backdrop-blur-xs transition-opacity"
+        />
+      )}
+
       {/* سایدبار */}
-      <aside className={`fixed md:relative inset-y-0 right-0 md:right-auto ${isSidebarOpen ? 'w-72 translate-x-0' : 'w-0 translate-x-full md:translate-x-0'} transition-all duration-300 ${isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"} border-l flex flex-col shrink-0 overflow-hidden z-40`}>
+      <aside className={`fixed md:relative inset-y-0 right-0 z-40 ${isSidebarOpen ? 'w-72 translate-x-0' : 'w-0 translate-x-full md:translate-x-0 md:w-72'} transition-all duration-300 ${isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"} border-l flex flex-col shrink-0 overflow-hidden`}>
         <div className={`p-4 border-b ${isDark ? "border-slate-800" : "border-slate-200"} flex flex-col gap-3 shrink-0`}>
           <div className="flex items-center justify-between">
             <span className={`font-bold text-sm ${isDark ? "text-slate-200" : "text-slate-700"}`}>{t("chatHistory")}</span>
@@ -869,10 +883,10 @@ export default function ChatPage() {
       </aside>
       
       {/* صفحه اصلی */}
-      <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
+      <div className="flex-1 flex flex-col h-[100dvh] overflow-hidden relative min-w-0">
         
         {/* هدر */}
-        <header className={`flex items-center justify-between px-4 md:px-6 py-4 ${isDark ? "bg-slate-900/80 border-slate-800" : "bg-white/80 border-slate-200"} backdrop-blur-xl border-b shrink-0 z-20`}>
+        <header className={`flex items-center justify-between px-4 md:px-6 py-3.5 ${isDark ? "bg-slate-900/80 border-slate-800" : "bg-white/80 border-slate-200"} backdrop-blur-xl border-b shrink-0 z-20`}>
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -912,7 +926,7 @@ export default function ChatPage() {
               )}
             </div>
 
-            {/* دکمه تنظیمات (چرخ‌دنده) - هدایت به صفحه تنظیمات */}
+            {/* دکمه تنظیمات */}
             <button
               onClick={() => router.push('/settings')}
               className={`p-2 rounded-xl ${isDark ? "bg-slate-800/60 text-slate-300 hover:text-teal-400" : "bg-slate-100 text-slate-700 hover:text-teal-600"} text-xs cursor-pointer transition-all`}
@@ -921,7 +935,7 @@ export default function ChatPage() {
               ⚙️
             </button>
 
-            {/* منوی پروفایل/خروج */}
+            {/* منوی پروفایل */}
             <div className="relative" ref={headerMenuRef}>
               <button
                 onClick={() => setIsHeaderMenuOpen(!isHeaderMenuOpen)}
@@ -1002,7 +1016,7 @@ export default function ChatPage() {
         </div>
 
         {/* بخش ارسال پیام */}
-        <div className={`p-4 ${isDark ? "bg-slate-900/80 border-slate-800" : "bg-white/80 border-slate-200"} border-t backdrop-blur-xl shrink-0`}>
+        <div className={`p-3 md:p-4 ${isDark ? "bg-slate-900/90 border-slate-800" : "bg-white/90 border-slate-200"} border-t backdrop-blur-xl shrink-0`}>
           <form onSubmit={handleSubmit} className="max-w-3xl mx-auto flex flex-col gap-2">
             
             {selectedFile && (
@@ -1085,7 +1099,7 @@ export default function ChatPage() {
 
       </div>
 
-      {/* پنجره حریم خصوصی پس از ارسال اولین پیام */}
+      {/* مودال حریم خصوصی */}
       {showPrivacyModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4">
           <div className={`max-w-md w-full ${isDark ? "bg-slate-900 border-slate-800 text-slate-100" : "bg-white border-slate-200 text-slate-800"} border rounded-3xl p-6 shadow-2xl flex flex-col gap-4 text-center animate-in fade-in zoom-in-95`}>
