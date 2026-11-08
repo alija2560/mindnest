@@ -100,23 +100,9 @@ export default function ChatPage() {
   const [showCreditModal, setShowCreditModal] = useState(false);
   const [modalMessage, setModalMessage] = useState("سهمیه پیام‌های رایگان شما به اتمام رسیده است.");
   
-  // حالت نمایش پاپ‌آپ حریم خصوصی پس از ارسال اولین پیام
+  // وضعیت‌های مربوط به نمایش پاپ‌آپ حریم خصوصی پس از اولین پیام
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [hasSentFirstMessage, setHasSentFirstMessage] = useState(false);
-
-  // حالت نمایش مودال تنظیمات (Settings Modal)
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [selectedTone, setSelectedTone] = useState("friendly");
-
-  useEffect(() => {
-    const savedTone = localStorage.getItem("nava_tone");
-    if (savedTone) setSelectedTone(savedTone);
-  }, []);
-
-  const handleToneChange = (tone: string) => {
-    setSelectedTone(tone);
-    localStorage.setItem("nava_tone", tone);
-  };
   
   const [remainingFreeMessages, setRemainingFreeMessages] = useState<number | null>(null);
   const [messages, setMessages] = useState<Message[]>([INITIAL_GREETING]);
@@ -176,12 +162,6 @@ export default function ChatPage() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  const toggleTheme = () => {
-    const nextTheme = theme === "dark" ? "light" : "dark";
-    setTheme(nextTheme);
-    localStorage.setItem("nava_theme", nextTheme);
-  };
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -512,7 +492,7 @@ export default function ChatPage() {
     }
   };
 
-  // چک کردن ارسال اولین پیام برای نمایش پاپ‌آپ حریم خصوصی
+  // تابع بررسی ارسال اولین پیام جهت نمایش پاپ‌آپ حریم خصوصی
   const checkFirstMessagePrivacyTrigger = () => {
     if (!hasSentFirstMessage) {
       const hasSeenPrivacy = localStorage.getItem("nava_privacy_modal_seen");
@@ -556,7 +536,6 @@ export default function ChatPage() {
         
         stream.getTracks().forEach(track => track.stop());
 
-        // تریگر حریم خصوصی پس از ارسال اولین پیام صوتی
         checkFirstMessagePrivacyTrigger();
         await transcribeAudioToServer(audioFile);
       };
@@ -594,7 +573,8 @@ export default function ChatPage() {
         formData.append("conversationId", conversationId);
       }
 
-      formData.append("tone", selectedTone);
+      const savedTone = localStorage.getItem("nava_tone") || "friendly";
+      formData.append("tone", savedTone);
 
       const res = await fetch("/api/ai/chat/", {
         method: "POST",
@@ -719,7 +699,8 @@ export default function ChatPage() {
         formData.append("file", fileToSend);
       }
 
-      formData.append("tone", selectedTone);
+      const savedTone = localStorage.getItem("nava_tone") || "friendly";
+      formData.append("tone", savedTone);
 
       const res = await fetch("/api/ai/chat/", {
         method: "POST",
@@ -911,11 +892,11 @@ export default function ChatPage() {
               )}
             </div>
 
-            {/* دکمه تنظیمات (چرخ‌دنده) که اکنون مودال Settings را باز می‌کند */}
+            {/* دکمه تنظیمات (چرخ‌دنده) - هدایت به صفحه تنظیمات طراحی‌شده */}
             <button
-              onClick={() => setShowSettingsModal(true)}
+              onClick={() => router.push('/settings')}
               className={`p-2 rounded-xl ${isDark ? "bg-slate-800/60 text-slate-300 hover:text-teal-400" : "bg-slate-100 text-slate-700 hover:text-teal-600"} text-xs cursor-pointer transition-all`}
-              title="تنظیمات گفتگو و تم"
+              title="تنظیمات"
             >
               ⚙️
             </button>
@@ -1084,79 +1065,7 @@ export default function ChatPage() {
 
       </div>
 
-      {/* مودال تنظیمات (شامل حالت تاریک/روشن روز و شب و انتخاب لحن گفتگو) */}
-      {showSettingsModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <div className={`max-w-md w-full ${isDark ? "bg-slate-900 border-slate-800 text-slate-100" : "bg-white border-slate-200 text-slate-800"} border rounded-3xl p-6 shadow-2xl flex flex-col gap-6 animate-in fade-in zoom-in-95`}>
-            
-            <div className="flex items-center justify-between border-b pb-3 border-slate-700/50">
-              <h3 className="font-bold text-base flex items-center gap-2">⚙️ تنظیمات و شخصی‌سازی</h3>
-              <button onClick={() => setShowSettingsModal(false)} className="text-slate-400 hover:text-slate-200 text-sm font-bold">✕</button>
-            </div>
-
-            <div className="space-y-5">
-              {/* بخش تنظیمات ظاهر (روز و شب) */}
-              <div className="flex flex-col gap-2">
-                <label className="text-xs font-bold text-slate-400">حالت نمایش (روز و شب)</label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => { setTheme("light"); localStorage.setItem("nava_theme", "light"); }}
-                    className={`flex items-center justify-center gap-2 py-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
-                      !isDark ? "bg-amber-500/20 border-amber-500 text-amber-500" : "border-slate-700 text-slate-400 hover:bg-slate-800"
-                    }`}
-                  >
-                    ☀️ حالت روز (روشن)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setTheme("dark"); localStorage.setItem("nava_theme", "dark"); }}
-                    className={`flex items-center justify-center gap-2 py-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
-                      isDark ? "bg-teal-500/20 border-teal-500 text-teal-400" : "border-slate-200 text-slate-600 hover:bg-slate-100"
-                    }`}
-                  >
-                    🌙 حالت شب (تاریک)
-                  </button>
-                </div>
-              </div>
-
-              {/* بخش نحوه گفتگو و لحن */}
-              <div className="flex flex-col gap-2">
-                <label className="text-xs font-bold text-slate-400">نحوه گفتگو و لحن نوا</label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => handleToneChange("friendly")}
-                    className={`py-2.5 px-3 rounded-xl border text-xs font-medium transition-all cursor-pointer text-center ${
-                      selectedTone === "friendly" ? "bg-teal-600 text-white border-teal-600 font-bold" : "border-slate-700 text-slate-400 hover:bg-slate-800"
-                    }`}
-                  >
-                    صمیمی و همدلانه
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleToneChange("professional")}
-                    className={`py-2.5 px-3 rounded-xl border text-xs font-medium transition-all cursor-pointer text-center ${
-                      selectedTone === "professional" ? "bg-teal-600 text-white border-teal-600 font-bold" : "border-slate-700 text-slate-400 hover:bg-slate-800"
-                    }`}
-                  >
-                    رسمی و تخصصی
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setShowSettingsModal(false)}
-              className="bg-teal-600 hover:bg-teal-500 text-white py-3 rounded-xl text-xs font-bold transition-all cursor-pointer mt-2 shadow-lg shadow-teal-600/20"
-            >
-              ذخیره و بازگشت به گفتگو
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* پنجره حریم خصوصی پس از ارسال اولین پیام */}
+      {/* پنجره حریم خصوصی که پس از ارسال اولین پیام ظاهر می‌شود */}
       {showPrivacyModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4">
           <div className={`max-w-md w-full ${isDark ? "bg-slate-900 border-slate-800 text-slate-100" : "bg-white border-slate-200 text-slate-800"} border rounded-3xl p-6 shadow-2xl flex flex-col gap-4 text-center animate-in fade-in zoom-in-95`}>
