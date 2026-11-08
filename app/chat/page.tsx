@@ -29,7 +29,6 @@ const TypingIndicator = ({ isDark }: { isDark: boolean }) => {
   );
 };
 
-// کامپوننت موج صوتی متحرک هنگام ضبط صدا
 const AudioWaveform = () => {
   return (
     <div className="flex items-center gap-1.5 h-6 px-2">
@@ -101,19 +100,22 @@ export default function ChatPage() {
   const [showCreditModal, setShowCreditModal] = useState(false);
   const [modalMessage, setModalMessage] = useState("سهمیه پیام‌های رایگان شما به اتمام رسیده است.");
   
-  // مدال ورود به چت برای اطلاع‌رسانی حذف خودکار پس از یک هفته
+  // حالت نمایش پاپ‌آپ حریم خصوصی پس از ارسال اولین پیام
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [hasSentFirstMessage, setHasSentFirstMessage] = useState(false);
+
+  // حالت نمایش مودال تنظیمات (Settings Modal)
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [selectedTone, setSelectedTone] = useState("friendly");
 
   useEffect(() => {
-    const hasSeenPrivacy = localStorage.getItem("nava_privacy_modal_seen");
-    if (!hasSeenPrivacy) {
-      setShowPrivacyModal(true);
-    }
+    const savedTone = localStorage.getItem("nava_tone");
+    if (savedTone) setSelectedTone(savedTone);
   }, []);
 
-  const handleClosePrivacyModal = () => {
-    localStorage.setItem("nava_privacy_modal_seen", "true");
-    setShowPrivacyModal(false);
+  const handleToneChange = (tone: string) => {
+    setSelectedTone(tone);
+    localStorage.setItem("nava_tone", tone);
   };
   
   const [remainingFreeMessages, setRemainingFreeMessages] = useState<number | null>(null);
@@ -152,10 +154,8 @@ export default function ChatPage() {
   const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
   const headerMenuRef = useRef<HTMLDivElement>(null);
 
-  const [showScrollTopBtn, setShowScrollTopBtn] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("nava_theme") as "dark" | "light" | null;
@@ -187,17 +187,6 @@ export default function ChatPage() {
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  const scrollToTop = () => {
-    chatContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  const handleScroll = () => {
-    if (chatContainerRef.current) {
-      const { scrollTop } = chatContainerRef.current;
-      setShowScrollTopBtn(scrollTop > 250);
-    }
   };
 
   useEffect(() => {
@@ -300,10 +289,6 @@ export default function ChatPage() {
           }
           .content {
             white-space: pre-wrap;
-          }
-          @media print {
-            body { background-color: #fff; padding: 10px; }
-            .message { break-inside: avoid; }
           }
         </style>
       </head>
@@ -527,7 +512,17 @@ export default function ChatPage() {
     }
   };
 
-  // ضبط صدا و ارسال خودکار جهت تبدیل به متن و نمایش در لحظه
+  // چک کردن ارسال اولین پیام برای نمایش پاپ‌آپ حریم خصوصی
+  const checkFirstMessagePrivacyTrigger = () => {
+    if (!hasSentFirstMessage) {
+      const hasSeenPrivacy = localStorage.getItem("nava_privacy_modal_seen");
+      if (!hasSeenPrivacy) {
+        setShowPrivacyModal(true);
+      }
+      setHasSentFirstMessage(true);
+    }
+  };
+
   const startRecording = async () => {
     try {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -561,7 +556,8 @@ export default function ChatPage() {
         
         stream.getTracks().forEach(track => track.stop());
 
-        // ارسال به سرور جهت تبدیل صوت به متن
+        // تریگر حریم خصوصی پس از ارسال اولین پیام صوتی
+        checkFirstMessagePrivacyTrigger();
         await transcribeAudioToServer(audioFile);
       };
 
@@ -598,8 +594,7 @@ export default function ChatPage() {
         formData.append("conversationId", conversationId);
       }
 
-      const savedTone = localStorage.getItem("nava_tone") || "friendly";
-      formData.append("tone", savedTone);
+      formData.append("tone", selectedTone);
 
       const res = await fetch("/api/ai/chat/", {
         method: "POST",
@@ -641,7 +636,6 @@ export default function ChatPage() {
         const transcript = data?.transcribedText || data?.transcript || data?.userMessage || "🎤 پیام صوتی";
         const assistantResponse = data?.response || data?.text || data?.message || "پاسخی دریافت نشد.";
 
-        // نمایش فوری متن تبدیل‌شده در همان لحظه در چت
         setMessages((prev) => [
           ...prev,
           { role: "user", content: transcript },
@@ -677,7 +671,6 @@ export default function ChatPage() {
     setIsLoggingOut(true);
 
     try {
-      // ۱. درخواست به سرور برای پاکسازی سشن و کوکی nava_session
       await fetch("/api/auth/logout", { 
         method: "POST", 
         credentials: "include" 
@@ -686,17 +679,18 @@ export default function ChatPage() {
       console.error("Logout failed:", error);
     }
 
-    // ۲. پاکسازی صریح کوکی از تمام مسیرها در سمت کلاینت
     document.cookie = "nava_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
     document.cookie = `nava_session=; path=/; domain=${window.location.hostname}; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
 
-    // ۳. هدایت اجباری و جایگزینی تاریخچه مرورگر (مانع از کار کردن دکمه Back می‌شود)
     window.location.replace("/login");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if ((!input.trim() && !selectedFile) || isLoading || isTranscribing) return;
+
+    // تریگر نمایش پاپ‌آپ حریم خصوصی پس از ارسال اولین پیام
+    checkFirstMessagePrivacyTrigger();
 
     const userMessageText = input.trim();
     const fileToSend = selectedFile;
@@ -725,8 +719,7 @@ export default function ChatPage() {
         formData.append("file", fileToSend);
       }
 
-      const savedTone = localStorage.getItem("nava_tone") || "friendly";
-      formData.append("tone", savedTone);
+      formData.append("tone", selectedTone);
 
       const res = await fetch("/api/ai/chat/", {
         method: "POST",
@@ -797,7 +790,7 @@ export default function ChatPage() {
   return (
     <div dir={lang === 'fa' ? 'rtl' : 'ltr'} className={`flex h-screen w-screen font-sans overflow-hidden ${isDark ? "bg-slate-950 text-slate-100" : "bg-slate-50 text-slate-800"}`}>
       
-      {/* سایدبار کشویی در موبایل و ثابت در دسکتاپ */}
+      {/* سایدبار */}
       <aside className={`fixed md:relative inset-y-0 right-0 md:right-auto ${isSidebarOpen ? 'w-72 translate-x-0' : 'w-0 translate-x-full md:translate-x-0'} transition-all duration-300 ${isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"} border-l flex flex-col shrink-0 overflow-hidden z-40`}>
         <div className={`p-4 border-b ${isDark ? "border-slate-800" : "border-slate-200"} flex flex-col gap-3 shrink-0`}>
           <div className="flex items-center justify-between">
@@ -855,7 +848,6 @@ export default function ChatPage() {
                       <div className={`truncate font-medium flex-1 ${isDark ? "text-slate-200" : "text-slate-700"}`}>
                         {conv.title || t("untitledChat")}
                       </div>
-                      {/* دکمه‌های ویرایش و حذف مخفی که با هاور یا لمس ظاهر می‌شوند */}
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 group-active:opacity-100 focus-within:opacity-100 transition-opacity">
                         <button onClick={(e) => startEditing(e, conv)} className="text-slate-400 hover:text-teal-500 p-1" title="ویرایش">✏️</button>
                         <button onClick={(e) => handleDeleteConversation(e, conv.id)} className="text-slate-400 hover:text-red-400 p-1" title="حذف">🗑️</button>
@@ -894,7 +886,7 @@ export default function ChatPage() {
 
           <div className="flex items-center gap-2">
             
-            {/* منوی گزارش‌ها (دسکتاپ) */}
+            {/* منوی گزارش‌ها */}
             <div className="relative hidden md:block" ref={reportMenuRef}>
               <button
                 onClick={() => setIsReportMenuOpen(!isReportMenuOpen)}
@@ -919,22 +911,22 @@ export default function ChatPage() {
               )}
             </div>
 
-            {/* دکمه تم */}
+            {/* دکمه تنظیمات (چرخ‌دنده) که اکنون مودال Settings را باز می‌کند */}
             <button
-              onClick={toggleTheme}
-              className={`p-2 rounded-xl ${isDark ? "bg-slate-800/60 text-amber-400" : "bg-slate-100 text-slate-700"} text-xs cursor-pointer transition-all`}
-              title="تغییر تم"
+              onClick={() => setShowSettingsModal(true)}
+              className={`p-2 rounded-xl ${isDark ? "bg-slate-800/60 text-slate-300 hover:text-teal-400" : "bg-slate-100 text-slate-700 hover:text-teal-600"} text-xs cursor-pointer transition-all`}
+              title="تنظیمات گفتگو و تم"
             >
-              {isDark ? "☀️" : "🌙"}
+              ⚙️
             </button>
 
-            {/* منوی پروفایل/تنظیمات سربرگ */}
+            {/* منوی پروفایل/خروج */}
             <div className="relative" ref={headerMenuRef}>
               <button
                 onClick={() => setIsHeaderMenuOpen(!isHeaderMenuOpen)}
                 className={`p-2 rounded-xl ${isDark ? "bg-slate-800/60 text-slate-300" : "bg-slate-100 text-slate-700"} text-xs cursor-pointer`}
               >
-                ⚙️
+                ⋮
               </button>
 
               {isHeaderMenuOpen && (
@@ -967,7 +959,6 @@ export default function ChatPage() {
         {/* بدنه چت */}
         <div
           ref={chatContainerRef}
-          onScroll={handleScroll}
           className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 relative"
         >
           <div className="max-w-3xl mx-auto space-y-6 w-full">
@@ -1013,7 +1004,6 @@ export default function ChatPage() {
         <div className={`p-4 ${isDark ? "bg-slate-900/80 border-slate-800" : "bg-white/80 border-slate-200"} border-t backdrop-blur-xl shrink-0`}>
           <form onSubmit={handleSubmit} className="max-w-3xl mx-auto flex flex-col gap-2">
             
-            {/* پیش‌نمایش فایل پیوست شده */}
             {selectedFile && (
               <div className={`flex items-center justify-between p-2 rounded-xl text-xs ${isDark ? "bg-slate-800 border-slate-700" : "bg-slate-200 border-slate-300"} border`}>
                 <div className="flex items-center gap-2 truncate">
@@ -1060,7 +1050,6 @@ export default function ChatPage() {
                 className={`flex-1 bg-transparent text-sm outline-none px-2 ${isDark ? "text-slate-100 placeholder-slate-500" : "text-slate-800 placeholder-slate-400"}`}
               />
 
-              {/* دکمه ضبط صدا */}
               <button
                 type="button"
                 onClick={toggleRecording}
@@ -1076,7 +1065,6 @@ export default function ChatPage() {
                 {isRecording ? "⏹️" : "🎙️"}
               </button>
 
-              {/* دکمه ارسال */}
               <button
                 type="submit"
                 disabled={(!input.trim() && !selectedFile) || isLoading || isTranscribing}
@@ -1096,7 +1084,79 @@ export default function ChatPage() {
 
       </div>
 
-      {/* مودال حریم خصوصی / پاک شدن پیام‌ها پس از یک هفته به محض ورود کاربر */}
+      {/* مودال تنظیمات (شامل حالت تاریک/روشن روز و شب و انتخاب لحن گفتگو) */}
+      {showSettingsModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <div className={`max-w-md w-full ${isDark ? "bg-slate-900 border-slate-800 text-slate-100" : "bg-white border-slate-200 text-slate-800"} border rounded-3xl p-6 shadow-2xl flex flex-col gap-6 animate-in fade-in zoom-in-95`}>
+            
+            <div className="flex items-center justify-between border-b pb-3 border-slate-700/50">
+              <h3 className="font-bold text-base flex items-center gap-2">⚙️ تنظیمات و شخصی‌سازی</h3>
+              <button onClick={() => setShowSettingsModal(false)} className="text-slate-400 hover:text-slate-200 text-sm font-bold">✕</button>
+            </div>
+
+            <div className="space-y-5">
+              {/* بخش تنظیمات ظاهر (روز و شب) */}
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-bold text-slate-400">حالت نمایش (روز و شب)</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => { setTheme("light"); localStorage.setItem("nava_theme", "light"); }}
+                    className={`flex items-center justify-center gap-2 py-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                      !isDark ? "bg-amber-500/20 border-amber-500 text-amber-500" : "border-slate-700 text-slate-400 hover:bg-slate-800"
+                    }`}
+                  >
+                    ☀️ حالت روز (روشن)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setTheme("dark"); localStorage.setItem("nava_theme", "dark"); }}
+                    className={`flex items-center justify-center gap-2 py-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                      isDark ? "bg-teal-500/20 border-teal-500 text-teal-400" : "border-slate-200 text-slate-600 hover:bg-slate-100"
+                    }`}
+                  >
+                    🌙 حالت شب (تاریک)
+                  </button>
+                </div>
+              </div>
+
+              {/* بخش نحوه گفتگو و لحن */}
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-bold text-slate-400">نحوه گفتگو و لحن نوا</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleToneChange("friendly")}
+                    className={`py-2.5 px-3 rounded-xl border text-xs font-medium transition-all cursor-pointer text-center ${
+                      selectedTone === "friendly" ? "bg-teal-600 text-white border-teal-600 font-bold" : "border-slate-700 text-slate-400 hover:bg-slate-800"
+                    }`}
+                  >
+                    صمیمی و همدلانه
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleToneChange("professional")}
+                    className={`py-2.5 px-3 rounded-xl border text-xs font-medium transition-all cursor-pointer text-center ${
+                      selectedTone === "professional" ? "bg-teal-600 text-white border-teal-600 font-bold" : "border-slate-700 text-slate-400 hover:bg-slate-800"
+                    }`}
+                  >
+                    رسمی و تخصصی
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowSettingsModal(false)}
+              className="bg-teal-600 hover:bg-teal-500 text-white py-3 rounded-xl text-xs font-bold transition-all cursor-pointer mt-2 shadow-lg shadow-teal-600/20"
+            >
+              ذخیره و بازگشت به گفتگو
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* پنجره حریم خصوصی پس از ارسال اولین پیام */}
       {showPrivacyModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4">
           <div className={`max-w-md w-full ${isDark ? "bg-slate-900 border-slate-800 text-slate-100" : "bg-white border-slate-200 text-slate-800"} border rounded-3xl p-6 shadow-2xl flex flex-col gap-4 text-center animate-in fade-in zoom-in-95`}>
@@ -1108,16 +1168,16 @@ export default function ChatPage() {
               برای حفظ امنیت و محرمانگی، تمامی پیام‌ها و گفتگوهای شما پس از **یک هفته** به صورت خودکار از پایگاه داده پاک می‌شوند تا با خیال راحت بتوانید افکار و دغدغه‌هایتان را با نوا در میان بگذارید.
             </p>
             <button
-              onClick={handleClosePrivacyModal}
+              onClick={() => setShowPrivacyModal(false)}
               className="bg-teal-600 hover:bg-teal-500 text-white py-3 rounded-xl text-xs font-bold transition-all cursor-pointer mt-2"
             >
-              متوجه شدم، ورود به چت
+              متوجه شدم، ادامه گفتگو
             </button>
           </div>
         </div>
       )}
 
-      {/* مودال اتمام سهمیه / قفل موقت */}
+      {/* مودال اتمام سهمیه */}
       {showCreditModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className={`max-w-md w-full ${isDark ? "bg-slate-900 border-slate-800 text-slate-100" : "bg-white border-slate-200 text-slate-800"} border rounded-3xl p-6 shadow-2xl flex flex-col gap-4 text-center animate-in fade-in zoom-in-95`}>
