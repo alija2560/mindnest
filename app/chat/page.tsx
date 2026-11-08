@@ -18,7 +18,6 @@ interface ConversationItem {
   updatedAt: string;
 }
 
-// لیستی از پیام‌های خوش‌آمدگویی متفاوت، صمیمی و الهام‌بخش
 const GREETING_MESSAGES = {
   fa: [
     "سلام دوست عزیزم. من «نوا» هستم؛ همراه و گوش شنوای تو. امروز حالت چطوره؟ هر چیزی که ذهنت رو درگیر کرده می‌تونی راحت با من در میان بذاری.",
@@ -161,6 +160,14 @@ export default function ChatPage() {
 
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
+    }
+  }, [input]);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("nava_theme") as "dark" | "light" | null;
@@ -584,7 +591,6 @@ export default function ChatPage() {
 
   const transcribeAudioToServer = async (audioFile: File) => {
     setIsTranscribing(true);
-    // فقط نشانگر تایپ ربات فعال می‌شود و هیچ پیام متنی یا حباب موقتی قبل از دریافت پاسخ ثبت نمی‌شود
     setMessages((prev) => [...prev, { role: "assistant", content: "typing-indicator" }]);
 
     try {
@@ -710,6 +716,9 @@ export default function ChatPage() {
     setIsLoading(true);
     setInput("");
     clearSelectedFile();
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+    }
 
     const activeConvId = conversationId;
 
@@ -797,7 +806,6 @@ export default function ChatPage() {
   return (
     <div dir={lang === 'fa' ? 'rtl' : 'ltr'} className={`flex h-[100dvh] w-screen font-sans overflow-hidden ${isDark ? "bg-slate-950 text-slate-100" : "bg-slate-50 text-slate-800"}`}>
       
-      {/* اوورلی سایدبار در موبایل */}
       {isSidebarOpen && (
         <div 
           onClick={() => setIsSidebarOpen(false)} 
@@ -935,7 +943,7 @@ export default function ChatPage() {
               ⚙️
             </button>
 
-            {/* منوی پروفایل */}
+            {/* منوی پروفایل و منوی هدر */}
             <div className="relative" ref={headerMenuRef}>
               <button
                 onClick={() => setIsHeaderMenuOpen(!isHeaderMenuOpen)}
@@ -1015,7 +1023,7 @@ export default function ChatPage() {
           </div>
         </div>
 
-        {/* بخش ارسال پیام */}
+        {/* بخش ارسال پیام (تکست‌آریا با قابلیت باز شدن به سطر بعد + دکمه ارسال در کنار میکروفون) */}
         <div className={`p-3 md:p-4 ${isDark ? "bg-slate-900/90 border-slate-800" : "bg-white/90 border-slate-200"} border-t backdrop-blur-xl shrink-0`}>
           <form onSubmit={handleSubmit} className="max-w-3xl mx-auto flex flex-col gap-2">
             
@@ -1039,7 +1047,7 @@ export default function ChatPage() {
               </div>
             )}
 
-            <div className={`flex items-center gap-2 ${isDark ? "bg-slate-950 border-slate-800" : "bg-slate-100 border-slate-200"} border rounded-2xl px-3 py-2 focus-within:border-teal-500 transition-all`}>
+            <div className={`flex items-end gap-2 ${isDark ? "bg-slate-950 border-slate-800" : "bg-slate-100 border-slate-200"} border rounded-2xl px-3 py-2.5 focus-within:border-teal-500 transition-all`}>
               
               <input
                 type="file"
@@ -1051,42 +1059,52 @@ export default function ChatPage() {
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className={`p-2 rounded-xl transition-all cursor-pointer ${isDark ? "text-slate-400 hover:text-slate-200 hover:bg-slate-800" : "text-slate-500 hover:text-slate-800 hover:bg-slate-200"}`}
+                className={`p-2 mb-0.5 rounded-xl transition-all cursor-pointer shrink-0 ${isDark ? "text-slate-400 hover:text-slate-200 hover:bg-slate-800" : "text-slate-500 hover:text-slate-800 hover:bg-slate-200"}`}
                 title="افزودن فایل پیوست"
               >
                 📎
               </button>
 
-              <input
-                type="text"
+              <textarea
+                ref={textareaRef}
+                rows={1}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSubmit(e);
+                  }
+                }}
                 placeholder="پیام خود را به نوا بنویسید..."
-                className={`flex-1 bg-transparent text-sm outline-none px-2 ${isDark ? "text-slate-100 placeholder-slate-500" : "text-slate-800 placeholder-slate-400"}`}
+                className={`flex-1 bg-transparent text-sm outline-none px-2 resize-none max-h-32 overflow-y-auto leading-6 ${isDark ? "text-slate-100 placeholder-slate-500" : "text-slate-800 placeholder-slate-400"}`}
               />
 
-              <button
-                type="button"
-                onClick={toggleRecording}
-                className={`p-2 rounded-xl transition-all cursor-pointer ${
-                  isRecording
-                    ? "bg-red-500 text-white animate-pulse"
-                    : isDark
-                    ? "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
-                    : "text-slate-500 hover:text-slate-800 hover:bg-slate-200"
-                }`}
-                title={isRecording ? "توقف ضبط" : "ضبط صدا"}
-              >
-                {isRecording ? "⏹️" : "🎙️"}
-              </button>
+              <div className="flex items-center gap-1.5 shrink-0 mb-0.5">
+                <button
+                  type="button"
+                  onClick={toggleRecording}
+                  className={`p-2 rounded-xl transition-all cursor-pointer ${
+                    isRecording
+                      ? "bg-red-500 text-white animate-pulse"
+                      : isDark
+                      ? "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+                      : "text-slate-500 hover:text-slate-800 hover:bg-slate-200"
+                  }`}
+                  title={isRecording ? "توقف ضبط" : "ضبط صدا"}
+                >
+                  {isRecording ? "⏹️" : "🎙️"}
+                </button>
 
-              <button
-                type="submit"
-                disabled={(!input.trim() && !selectedFile) || isLoading || isTranscribing}
-                className="bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white p-2.5 rounded-xl transition-all cursor-pointer shadow-lg shadow-teal-600/20"
-              >
-                ➤
-              </button>
+                <button
+                  type="submit"
+                  disabled={(!input.trim() && !selectedFile) || isLoading || isTranscribing}
+                  className="bg-teal-600 hover:bg-teal-500 disabled:opacity-40 text-white p-2.5 rounded-xl transition-all cursor-pointer shadow-md shadow-teal-600/20 flex items-center justify-center"
+                  title="ارسال پیام"
+                >
+                  ➤
+                </button>
+              </div>
             </div>
 
             {isRecording && (
