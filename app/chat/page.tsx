@@ -18,6 +18,33 @@ interface ConversationItem {
   updatedAt: string;
 }
 
+// لیستی از پیام‌های خوش‌آمدگویی متفاوت، صمیمی و الهام‌بخش (تغییر رندوم در هر ورود یا شروع چت جدید)
+const GREETING_MESSAGES = {
+  fa: [
+    "سلام دوست عزیزم. من «نوا» هستم؛ همراه و گوش شنوای تو. امروز حالت چطوره؟ هر چیزی که ذهنت رو درگیر کرده می‌تونی راحت با من در میان بذاری.",
+    "سلام! چقدر خوب که امروز هم اینجایی. امروز دلت می‌خواد درباره چه موضوعی با هم گپ بزنیم یا چه حس و حالی رو با هم مرور کنیم؟",
+    "روزت بخیر و پر از آرامش! من اینجام تا بدون هیچ قضاوتی، به حرف‌ها، دغدغه‌ها یا حتی آرزوهای امروزت گوش بدم. از حال و هوات برام بگو.",
+    "سلام دوست خوبم. امیدوارم روز فوق‌العاده‌ای رو شروع کرده باشی. هر فکری که توی سرته یا هر حالی که داری، من با تمام وجود آماده‌ام شنونده‌ات باشم.",
+    "سلام! خوش اومدی. بیا امروز رو با یک نفس عمیق و یک گفتگوی آروم با هم شروع کنیم. امروز چطور می‌تونم همراهت باشم؟"
+  ],
+  en: [
+    "Hello my dear friend. I am Nava; your companion and listener. How are you today? You can comfortably share anything on your mind with me.",
+    "Hi there! So glad you're here today. What would you like to chat about or explore together today?",
+    "Good day and wishing you peace! I'm here to listen to your thoughts, concerns, or dreams without any judgment. Tell me how you're feeling.",
+    "Hello my good friend. I hope you're having a wonderful start to your day. Whatever is on your mind, I'm all ears.",
+    "Hi! Welcome. Let's start today with a deep breath and a calm chat. How can I accompany you today?"
+  ]
+};
+
+const getRandomGreeting = (currentLang: Lang): Message => {
+  const messages = GREETING_MESSAGES[currentLang] || GREETING_MESSAGES["fa"];
+  const randomIndex = Math.floor(Math.random() * messages.length);
+  return {
+    role: "assistant",
+    content: messages[randomIndex]
+  };
+};
+
 const TypingIndicator = ({ isDark }: { isDark: boolean }) => {
   return (
     <div className={`flex items-center gap-2 p-4 rounded-2xl ${isDark ? "bg-slate-800" : "bg-slate-100"} self-start`}>
@@ -88,24 +115,17 @@ export default function ChatPage() {
     return dictionary[lang]?.[key] || dictionary["fa"][key] || key;
   };
 
-  const INITIAL_GREETING: Message = {
-    role: "assistant",
-    content: lang === 'fa'
-      ? "سلام دوست عزیزم. من «نوا» هستم؛ همراه و گوش شنوای تو. امروز حالت چطوره؟ هر چیزی که ذهنت رو درگیر کرده می‌تونی راحت با من در میان بذاری."
-      : "Hello my dear friend. I am Nava; your companion and listener. How are you today? You can comfortably share anything on your mind with me."
-  };
-
   const [showWarningBanner, setShowWarningBanner] = useState(false);
   const [warningText, setWarningText] = useState("");
   const [showCreditModal, setShowCreditModal] = useState(false);
   const [modalMessage, setModalMessage] = useState("سهمیه پیام‌های رایگان شما به اتمام رسیده است.");
   
-  // وضعیت‌های مربوط به نمایش پاپ‌آپ حریم خصوصی پس از اولین پیام
+  // نمایش پاپ‌آپ حریم خصوصی پس از ارسال اولین پیام
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [hasSentFirstMessage, setHasSentFirstMessage] = useState(false);
   
   const [remainingFreeMessages, setRemainingFreeMessages] = useState<number | null>(null);
-  const [messages, setMessages] = useState<Message[]>([INITIAL_GREETING]);
+  const [messages, setMessages] = useState<Message[]>([getRandomGreeting(lang)]);
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -359,7 +379,7 @@ export default function ChatPage() {
           }));
           setMessages(loadedMessages);
         } else {
-          setMessages([INITIAL_GREETING]);
+          setMessages([getRandomGreeting(lang)]);
         }
       }
     } catch (err) {
@@ -375,7 +395,7 @@ export default function ChatPage() {
   const handleNewChat = () => {
     if (isLoading || isTranscribing) return;
     setConversationId(null);
-    setMessages([INITIAL_GREETING]);
+    setMessages([getRandomGreeting(lang)]);
     clearSelectedFile();
     if (window.innerWidth < 768) {
       setIsSidebarOpen(false);
@@ -454,7 +474,7 @@ export default function ChatPage() {
         setConversations((prev) => prev.filter((c) => c.id !== id));
         if (conversationId === id) {
           setConversationId(null);
-          setMessages([INITIAL_GREETING]);
+          setMessages([getRandomGreeting(lang)]);
         }
       }
     } catch (error) {
@@ -465,7 +485,7 @@ export default function ChatPage() {
   const handleClearCurrentChat = async () => {
     setIsHeaderMenuOpen(false);
     if (!conversationId) {
-      setMessages([INITIAL_GREETING]);
+      setMessages([getRandomGreeting(lang)]);
       return;
     }
 
@@ -481,7 +501,7 @@ export default function ChatPage() {
       });
 
       if (res.ok) {
-        setMessages([INITIAL_GREETING]);
+        setMessages([getRandomGreeting(lang)]);
         setConversationId(null);
         fetchConversationsList();
       }
@@ -492,7 +512,7 @@ export default function ChatPage() {
     }
   };
 
-  // تابع بررسی ارسال اولین پیام جهت نمایش پاپ‌آپ حریم خصوصی
+  // بررسی ارسال اولین پیام برای نمایش پاپ‌آپ حریم خصوصی
   const checkFirstMessagePrivacyTrigger = () => {
     if (!hasSentFirstMessage) {
       const hasSeenPrivacy = localStorage.getItem("nava_privacy_modal_seen");
@@ -892,7 +912,7 @@ export default function ChatPage() {
               )}
             </div>
 
-            {/* دکمه تنظیمات (چرخ‌دنده) - هدایت به صفحه تنظیمات طراحی‌شده */}
+            {/* دکمه تنظیمات (چرخ‌دنده) - هدایت به صفحه تنظیمات */}
             <button
               onClick={() => router.push('/settings')}
               className={`p-2 rounded-xl ${isDark ? "bg-slate-800/60 text-slate-300 hover:text-teal-400" : "bg-slate-100 text-slate-700 hover:text-teal-600"} text-xs cursor-pointer transition-all`}
@@ -1065,7 +1085,7 @@ export default function ChatPage() {
 
       </div>
 
-      {/* پنجره حریم خصوصی که پس از ارسال اولین پیام ظاهر می‌شود */}
+      {/* پنجره حریم خصوصی پس از ارسال اولین پیام */}
       {showPrivacyModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4">
           <div className={`max-w-md w-full ${isDark ? "bg-slate-900 border-slate-800 text-slate-100" : "bg-white border-slate-200 text-slate-800"} border rounded-3xl p-6 shadow-2xl flex flex-col gap-4 text-center animate-in fade-in zoom-in-95`}>
