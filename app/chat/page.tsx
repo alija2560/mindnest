@@ -92,8 +92,8 @@ export default function ChatPage() {
   const INITIAL_GREETING: Message = {
     role: "assistant",
     content: lang === 'fa'
-      ? "سلام دوست عزیزم. من «نوا» هستم؛ همراه و گوش شنوای تو. امروز حالت چطوره؟ هر چیزی که ذهنت رو درگیر کرده می‌تونی راحت با من در میان بذاری."
-      : "Hello my dear friend. I am Nava; your companion and listener. How are you today? You can comfortably share anything on your mind with me."
+      ? "سلام دوست عزیزم. من «نوا» هستم؛ همراه و گوش شنوای تو. پیام‌های ما برای حفظ امنیت و محرمانگی، پس از یک هفته به صورت خودکار پاک می‌شوند. امروز حالت چطوره؟ هر چیزی که ذهنت رو درگیر کرده می‌تونی راحت با من در میان بذاری."
+      : "Hello my dear friend. I am Nava; your companion and listener. Messages are automatically deleted after a week for security and confidentiality. How are you today? You can comfortably share anything on your mind with me."
   };
 
   const [showWarningBanner, setShowWarningBanner] = useState(false);
@@ -139,6 +139,7 @@ export default function ChatPage() {
 
   const [showScrollTopBtn, setShowScrollTopBtn] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
   useEffect(() => {
@@ -295,6 +296,7 @@ export default function ChatPage() {
         <div class="chat-container">
           <div class="header">
             <h1>گزارش گفتگو با دستیار هوشمند نوا</h1>
+            <p>توجه: پیام‌ها پس از یک هفته به صورت خودکار حذف می‌شوند.</p>
             <p>تاریخ استخراج: ${new Date().toLocaleDateString(lang === 'fa' ? 'fa-IR' : 'en-US')}</p>
           </div>
           ${messages.map(m => `
@@ -318,7 +320,7 @@ export default function ChatPage() {
   const handleExportTxt = () => {
     setIsReportMenuOpen(false);
     setIsHeaderMenuOpen(false);
-    const textContent = messages
+    const textContent = `[توجه: پیام‌ها برای حفظ محرمانگی پس از ۷ روز پاک می‌شوند]\n\n` + messages
       .map((m) => `${m.role === "user" ? "شما" : "نوا"}:\n${m.content}\n\n-----------------------------------\n`)
       .join("");
     
@@ -339,6 +341,7 @@ export default function ChatPage() {
       <head><meta charset="utf-8"><title>Chat Export</title></head>
       <body style="font-family: Tahoma, sans-serif; direction: ${lang === 'fa' ? 'rtl' : 'ltr'};">
         <h2 style="color: #0d9488; text-align: center;">خروجی گفتگو با دستیار نوا</h2>
+        <p style="text-align: center; color: #64748b; font-size: 12px;">(پیام‌ها پس از ۷ روز به صورت خودکار پاک می‌شوند)</p>
         ${messages.map(m => `
           <div style="margin-bottom: 15px; padding: 12px; border-radius: 8px; background-color: ${m.role === 'user' ? '#e0f2f1' : '#f8fafc'}; border: 1px solid #cbd5e1;">
             <strong style="color: ${m.role === 'user' ? '#0f766e' : '#334155'};">${m.role === 'user' ? 'شما:' : 'نوا:'}</strong>
@@ -407,6 +410,22 @@ export default function ChatPage() {
     }
     setSelectedFile(null);
     setSelectedFilePreviewUrl(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      if (file.type.startsWith("image/")) {
+        const previewUrl = URL.createObjectURL(file);
+        setSelectedFilePreviewUrl(previewUrl);
+      } else {
+        setSelectedFilePreviewUrl(null);
+      }
+    }
   };
 
   const startEditing = (e: React.MouseEvent, conv: ConversationItem) => {
@@ -874,65 +893,54 @@ export default function ChatPage() {
 
               {isReportMenuOpen && (
                 <div className={`absolute left-0 mt-2 w-44 rounded-2xl shadow-xl ${isDark ? "bg-slate-900 border-slate-800 text-slate-200" : "bg-white border-slate-200 text-slate-800"} border py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150`}>
-                  <button onClick={handleExportPdf} className={`w-full text-right px-4 py-2 text-xs flex items-center gap-2 transition-colors ${isDark ? "hover:bg-slate-800 hover:text-teal-400" : "hover:bg-slate-100 hover:text-teal-600"}`}>
-                    <span>📄</span> {t("exportPdf")}
+                  <button onClick={handleExportPdf} className={`w-full text-right px-4 py-2 text-xs hover:bg-teal-500/10 hover:text-teal-500 transition-colors flex items-center gap-2`}>
+                    📄 خروجی PDF / چاپ
                   </button>
-                  <button onClick={handleExportDocx} className={`w-full text-right px-4 py-2 text-xs flex items-center gap-2 transition-colors ${isDark ? "hover:bg-slate-800 hover:text-teal-400" : "hover:bg-slate-100 hover:text-teal-600"}`}>
-                    <span>📝</span> {t("exportWord")}
+                  <button onClick={handleExportTxt} className={`w-full text-right px-4 py-2 text-xs hover:bg-teal-500/10 hover:text-teal-500 transition-colors flex items-center gap-2`}>
+                    📝 خروجی متنی (TXT)
                   </button>
-                  <button onClick={handleExportTxt} className={`w-full text-right px-4 py-2 text-xs flex items-center gap-2 transition-colors ${isDark ? "hover:bg-slate-800 hover:text-teal-400" : "hover:bg-slate-100 hover:text-teal-600"}`}>
-                    <span>📋</span> {t("exportText")}
+                  <button onClick={handleExportDocx} className={`w-full text-right px-4 py-2 text-xs hover:bg-teal-500/10 hover:text-teal-500 transition-colors flex items-center gap-2`}>
+                    📊 خروجی ورد (DOC)
                   </button>
                 </div>
               )}
             </div>
 
-            <div className={`hidden md:block h-4 w-[1px] ${isDark ? "bg-slate-800" : "bg-slate-200"} mx-1`} />
-
-            {/* دکمه‌های افقی کامل (دسکتاپ) */}
-            <div className="hidden md:flex items-center gap-2">
-              <a href="/settings" className={`px-3 py-1.5 rounded-xl ${isDark ? "bg-slate-800/60 text-slate-300 hover:text-teal-400" : "bg-slate-100 text-slate-600 hover:text-teal-600"} border text-xs transition-all`}>
-                ⚙️ {t("settings")}
-              </a>
-
-              <button onClick={toggleTheme} className={`p-2 rounded-xl ${isDark ? "bg-slate-800/60 text-amber-400" : "bg-slate-100 text-amber-600"} border text-xs cursor-pointer`}>
-                {isDark ? "☀" : "🌙"}
-              </button>
-
-              <button onClick={handleClearCurrentChat} disabled={isClearing} className={`px-3 py-1.5 rounded-xl ${isDark ? "bg-slate-800/60 text-slate-300" : "bg-slate-100 text-slate-600"} border text-xs cursor-pointer`}>
-                {t("clearHistory")}
-              </button>
-
-              <button onClick={handleLogout} disabled={isLoggingOut} className={`px-3 py-1.5 rounded-xl ${isDark ? "bg-slate-800/60 text-slate-300" : "bg-slate-100 text-slate-600"} border text-xs cursor-pointer`}>
-                {t("exit")}
-              </button>
-
-              <button onClick={NextBack} disabled={isLoggingOut} className={`px-3 py-1.5 rounded-xl ${isDark ? "bg-slate-800/60 text-slate-300" : "bg-slate-100 text-slate-600"} border text-xs cursor-pointer`}>
-                 {isLoggingOut ? "در حال انتقال..." : t("backToDashboard")}
-              </button>
+            {/* نشانگر انقضای ۷ روزه */}
+            <div className="hidden lg:flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-lg bg-teal-500/10 text-teal-400 border border-teal-500/20">
+              <span>🔒 خوده‌حذف‌شونده ۷ روزه</span>
             </div>
 
-            {/* منوی سه نقطه کشویی (موبایل) */}
-            <div className="relative md:hidden" ref={headerMenuRef}>
+            {/* دکمه تم */}
+            <button
+              onClick={toggleTheme}
+              className={`p-2 rounded-xl ${isDark ? "bg-slate-800/60 text-amber-400" : "bg-slate-100 text-slate-700"} text-xs cursor-pointer transition-all`}
+              title="تغییر تم"
+            >
+              {isDark ? "☀️" : "🌙"}
+            </button>
+
+            {/* منوی پروفایل/تنظیمات سربرگ */}
+            <div className="relative" ref={headerMenuRef}>
               <button
                 onClick={() => setIsHeaderMenuOpen(!isHeaderMenuOpen)}
-                className={`p-2 rounded-xl ${isDark ? "bg-slate-800/60 text-slate-200 border-slate-700" : "bg-slate-100 text-slate-700 border-slate-200"} border text-sm`}
+                className={`p-2 rounded-xl ${isDark ? "bg-slate-800/60 text-slate-300" : "bg-slate-100 text-slate-700"} text-xs cursor-pointer`}
               >
-                ⋮
+                ⚙️
               </button>
 
               {isHeaderMenuOpen && (
-                <div className={`absolute left-0 mt-2 w-48 rounded-2xl shadow-xl ${isDark ? "bg-slate-900 border-slate-800 text-slate-200" : "bg-white border-slate-200 text-slate-800"} border py-2 z-50 flex flex-col gap-1`}>
-                  <div className="px-3 py-1 text-[10px] text-slate-400 font-bold border-b border-slate-700/50">{t("reports")}</div>
-                  <button onClick={handleExportPdf} className="w-full text-right px-4 py-1.5 text-xs hover:bg-teal-500/10 hover:text-teal-400">📄 {t("exportPdf")}</button>
-                  <button onClick={handleExportDocx} className="w-full text-right px-4 py-1.5 text-xs hover:bg-teal-500/10 hover:text-teal-400">📝 {t("exportWord")}</button>
-                  <button onClick={handleExportTxt} className="w-full text-right px-4 py-1.5 text-xs hover:bg-teal-500/10 hover:text-teal-400">📋 {t("exportText")}</button>
-                  <div className="border-t border-slate-700/50 my-1"></div>
-                  <a href="/settings" className="w-full text-right px-4 py-1.5 text-xs hover:bg-teal-500/10 hover:text-teal-400">⚙️ {t("settings")}</a>
-                  <button onClick={toggleTheme} className="w-full text-right px-4 py-1.5 text-xs hover:bg-teal-500/10 hover:text-teal-400">{isDark ? "☀ حالت روشن" : "🌙 حالت تاریک"}</button>
-                  <button onClick={handleClearCurrentChat} className="w-full text-right px-4 py-1.5 text-xs hover:bg-teal-500/10 hover:text-teal-400">🗑️ {t("clearHistory")}</button>
-                  <button onClick={NextBack} className="w-full text-right px-4 py-1.5 text-xs hover:bg-teal-500/10 hover:text-teal-400">📊 {t("backToDashboard")}</button>
-                  <button onClick={handleLogout} className="w-full text-right px-4 py-1.5 text-xs text-red-400 hover:bg-red-500/10">🚪 {t("exit")}</button>
+                <div className={`absolute left-0 mt-2 w-48 rounded-2xl shadow-xl ${isDark ? "bg-slate-900 border-slate-800 text-slate-200" : "bg-white border-slate-200 text-slate-800"} border py-1.5 z-50`}>
+                  <button onClick={handleClearCurrentChat} className="w-full text-right px-4 py-2 text-xs hover:bg-red-500/10 hover:text-red-400 transition-colors flex items-center gap-2">
+                    🗑️ پاکسازی گفتگوی فعلی
+                  </button>
+                  <button onClick={NextBack} className="w-full text-right px-4 py-2 text-xs hover:bg-teal-500/10 hover:text-teal-500 transition-colors flex items-center gap-2">
+                    🏠 بازگشت به داشبورد
+                  </button>
+                  <hr className={`my-1 ${isDark ? "border-slate-800" : "border-slate-100"}`} />
+                  <button onClick={handleLogout} className="w-full text-right px-4 py-2 text-xs hover:bg-red-500/10 hover:text-red-400 transition-colors flex items-center gap-2 text-red-500">
+                    🚪 خروج از حساب کاربری
+                  </button>
                 </div>
               )}
             </div>
@@ -942,199 +950,159 @@ export default function ChatPage() {
 
         {/* بنر هشدار سهمیه */}
         {showWarningBanner && (
-          <div className="bg-amber-500/15 border-b border-amber-500/30 text-amber-500 px-4 py-2 text-xs text-center font-medium">
-            ⚠️ {warningText}
+          <div className="bg-amber-500/10 border-b border-amber-500/20 text-amber-500 text-xs px-4 py-2 text-center flex items-center justify-center gap-2 shrink-0">
+            <span>⚠️</span>
+            <span>{warningText}</span>
           </div>
         )}
 
-        {/* بخش نمایش پیام‌ها (تراز دقیق راست برای کاربر و چپ برای نوا) */}
-        <div 
+        {/* بدنه چت */}
+        <div
           ref={chatContainerRef}
           onScroll={handleScroll}
-          className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 relative flex flex-col"
+          className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 relative"
         >
-          {messages.map((msg, index) => (
-            <div
-              key={index}
-              className={`flex flex-col gap-1 max-w-[85%] md:max-w-[70%] w-full ${
-                msg.role === "user" ? "ml-auto items-end text-right" : "mr-auto items-start text-right"
-              }`}
-            >
+          <div className="max-w-3xl mx-auto space-y-6 w-full">
+            {messages.map((msg, idx) => (
               <div
-                className={`p-4 rounded-2xl text-xs md:text-sm leading-relaxed relative group ${
-                  msg.role === "user"
-                    ? "bg-teal-600 text-white rounded-br-none"
-                    : isDark
-                    ? "bg-slate-800 text-slate-100 rounded-bl-none border border-slate-700/50"
-                    : "bg-white text-slate-800 rounded-bl-none border border-slate-200 shadow-sm"
-                }`}
+                key={idx}
+                className={`flex gap-3 md:gap-4 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
               >
-                {msg.content === "typing-indicator" ? (
-                  <TypingIndicator isDark={isDark} />
-                ) : (
-                  <>
-                    <div className="whitespace-pre-wrap">{msg.content}</div>
+                {msg.role === "assistant" && (
+                  <div className="w-8 h-8 rounded-full bg-teal-600/20 border border-teal-500/30 flex items-center justify-center shrink-0">
+                    <NavaLogo className="w-5 h-5" />
+                  </div>
+                )}
 
-                    {/* دکمه کپی متن (نمایش فقط هنگام هاور یا لمس روی پیام) */}
-                    {msg.content !== "typing-indicator" && (
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(msg.content);
-                          setCopiedIndex(index);
-                          setTimeout(() => setCopiedIndex(null), 2000);
-                        }}
-                        className={`absolute top-2 ${msg.role === 'user' ? 'left-2' : 'right-2'} opacity-0 group-hover:opacity-100 group-active:opacity-100 transition-opacity p-1 rounded bg-black/20 text-white text-[10px] cursor-pointer`}
-                        title="کپی متن"
-                      >
-                        {copiedIndex === index ? "✓ کپی شد" : "📋 کپی"}
-                      </button>
-                    )}
-                  </>
+                <div
+                  className={`max-w-[85%] md:max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                    msg.role === "user"
+                      ? "bg-teal-600 text-white rounded-br-none shadow-lg shadow-teal-600/10"
+                      : isDark
+                      ? "bg-slate-900 border border-slate-800 text-slate-100 rounded-bl-none shadow-sm"
+                      : "bg-white border border-slate-200 text-slate-800 rounded-bl-none shadow-sm"
+                  }`}
+                >
+                  {msg.content === "typing-indicator" ? (
+                    <TypingIndicator isDark={isDark} />
+                  ) : (
+                    <div className="whitespace-pre-wrap">{msg.content}</div>
+                  )}
+                </div>
+
+                {msg.role === "user" && (
+                  <div className="w-8 h-8 rounded-full bg-slate-700 text-slate-200 flex items-center justify-center shrink-0 text-xs font-bold">
+                    شما
+                  </div>
                 )}
               </div>
-            </div>
-          ))}
-          
-          {/* حباب وضعیت در حال تبدیل صوت به متن */}
-          {isTranscribing && (
-            <div className="flex flex-col gap-1 max-w-[85%] md:max-w-[70%] ml-auto items-end w-full">
-              <div className="p-4 rounded-2xl text-xs md:text-sm bg-teal-600/70 text-white rounded-br-none animate-pulse">
-                🎤 در حال تبدیل صوت به متن و ارسال...
-              </div>
-            </div>
-          )}
-
-          <div ref={messagesEndRef} />
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
         </div>
 
-        {/* دکمه شناور پیمایش سریع به بالا (گوشه سمت چپ و پایین) */}
-        {showScrollTopBtn && (
-          <button
-            onClick={scrollToTop}
-            className={`absolute bottom-24 left-6 z-30 w-10 h-10 rounded-full shadow-lg border flex items-center justify-center transition-all cursor-pointer ${
-              isDark 
-                ? "bg-slate-800/90 text-teal-400 border-slate-700 hover:bg-slate-700" 
-                : "bg-white/90 text-teal-600 border-slate-200 hover:bg-slate-50"
-            }`}
-            title="بازگشت به بالای صفحه"
-          >
-            ↑
-          </button>
-        )}
-
-        {/* نوار پایین برای ارسال پیام */}
-        <div className={`p-3 md:p-4 border-t ${isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"} shrink-0`}>
-          {selectedFilePreviewUrl && (
-            <div className="mb-2 flex items-center gap-2 p-2 rounded-xl bg-teal-500/10 border border-teal-500/20 max-w-xs">
-              <span className="text-xs text-teal-500 truncate flex-1">📎 {selectedFile?.name}</span>
-              <button onClick={clearSelectedFile} className="text-red-400 hover:text-red-500 text-xs px-1">✕</button>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="flex items-end gap-2 max-w-4xl mx-auto">
-            {/* تکس باکس با افکت امواج صوتی متحرک و قاب قرمز شکیل */}
-            <div className={`flex-1 flex items-center rounded-2xl border transition-all px-3 py-2 ${
-              isRecording 
-                ? "bg-red-500/10 border-red-500 shadow-lg shadow-red-500/10 ring-2 ring-red-500/20" 
-                : isTranscribing
-                ? "bg-amber-500/10 border-amber-500 animate-pulse"
-                : isDark ? "bg-slate-950 border-slate-800 focus-within:border-teal-500" : "bg-slate-100 border-slate-200 focus-within:border-teal-500"
-            }`}>
-              
-              {isRecording ? (
-                <div className="w-full flex items-center justify-between py-1">
-                  <AudioWaveform />
-                  <span className="text-[10px] text-red-500 font-medium">برای اتمام روی میکروفون کلیک کنید</span>
+        {/* بخش ارسال پیام */}
+        <div className={`p-4 ${isDark ? "bg-slate-900/80 border-slate-800" : "bg-white/80 border-slate-200"} border-t backdrop-blur-xl shrink-0`}>
+          <form onSubmit={handleSubmit} className="max-w-3xl mx-auto flex flex-col gap-2">
+            
+            {/* پیش‌نمایش فایل پیوست شده */}
+            {selectedFile && (
+              <div className={`flex items-center justify-between p-2 rounded-xl text-xs ${isDark ? "bg-slate-800 border-slate-700" : "bg-slate-200 border-slate-300"} border`}>
+                <div className="flex items-center gap-2 truncate">
+                  {selectedFilePreviewUrl ? (
+                    <img src={selectedFilePreviewUrl} alt="Preview" className="w-8 h-8 object-cover rounded-lg" />
+                  ) : (
+                    <span>📎</span>
+                  )}
+                  <span className="truncate">{selectedFile.name}</span>
                 </div>
-              ) : isTranscribing ? (
-                <div className="w-full py-1 text-xs text-amber-500 font-medium px-2 animate-pulse">
-                  ⏳ در حال تبدیل صوت به متن توسط سرور...
-                </div>
-              ) : (
-                <textarea
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSubmit(e);
-                    }
-                  }}
-                  rows={1}
-                  placeholder={t("typeMessage")}
-                  className={`w-full bg-transparent text-xs md:text-sm outline-none resize-none max-h-32 py-1 leading-relaxed ${
-                    isDark ? "text-slate-100 placeholder-slate-500" : "text-slate-800 placeholder-slate-400"
-                  }`}
-                  style={{ minHeight: '24px' }}
-                />
-              )}
-
-              <div className="flex items-center gap-1 shrink-0 mr-2">
                 <button
                   type="button"
-                  onClick={toggleRecording}
-                  disabled={isTranscribing}
-                  className={`p-2 rounded-xl text-xs transition-all cursor-pointer ${
-                    isRecording 
-                      ? "bg-red-500 text-white shadow-md shadow-red-500/50 scale-110 animate-pulse" 
-                      : isDark ? "text-slate-400 hover:text-slate-200" : "text-slate-500 hover:text-slate-800"
-                  }`}
-                  title={isRecording ? "توقف ضبط و تبدیل به متن" : "ضبط صوت و تبدیل خودکار به متن"}
+                  onClick={clearSelectedFile}
+                  className="text-red-400 hover:text-red-500 font-bold px-2 py-1"
                 >
-                  🎤
+                  ✕
                 </button>
-
-                {/* پیوست تصویر، PDF یا اکسل */}
-                <label className={`p-2 rounded-xl text-xs cursor-pointer transition-colors ${isDark ? "text-slate-400 hover:text-slate-200" : "text-slate-500 hover:text-slate-800"}`} title="پیوست تصویر، PDF یا اکسل">
-                  📎
-                  <input
-                    type="file"
-                    accept="image/*,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
-                    className="hidden"
-                    onChange={(e) => {
-                      if (e.target.files && e.target.files[0]) {
-                        setSelectedFile(e.target.files[0]);
-                        setSelectedFilePreviewUrl(URL.createObjectURL(e.target.files[0]));
-                      }
-                    }}
-                  />
-                </label>
               </div>
+            )}
+
+            <div className={`flex items-center gap-2 ${isDark ? "bg-slate-950 border-slate-800" : "bg-slate-100 border-slate-200"} border rounded-2xl px-3 py-2 focus-within:border-teal-500 transition-all`}>
+              
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                className="hidden"
+              />
+              
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className={`p-2 rounded-xl transition-all cursor-pointer ${isDark ? "text-slate-400 hover:text-slate-200 hover:bg-slate-800" : "text-slate-500 hover:text-slate-800 hover:bg-slate-200"}`}
+                title="افزودن فایل پیوست"
+              >
+                📎
+              </button>
+
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="پیام خود را به نوا بنویسید..."
+                className={`flex-1 bg-transparent text-sm outline-none px-2 ${isDark ? "text-slate-100 placeholder-slate-500" : "text-slate-800 placeholder-slate-400"}`}
+              />
+
+              {/* دکمه ضبط صدا */}
+              <button
+                type="button"
+                onClick={toggleRecording}
+                className={`p-2 rounded-xl transition-all cursor-pointer ${
+                  isRecording
+                    ? "bg-red-500 text-white animate-pulse"
+                    : isDark
+                    ? "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+                    : "text-slate-500 hover:text-slate-800 hover:bg-slate-200"
+                }`}
+                title={isRecording ? "توقف ضبط" : "ضبط صدا"}
+              >
+                {isRecording ? "⏹️" : "🎙️"}
+              </button>
+
+              {/* دکمه ارسال */}
+              <button
+                type="submit"
+                disabled={(!input.trim() && !selectedFile) || isLoading || isTranscribing}
+                className="bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white p-2.5 rounded-xl transition-all cursor-pointer shadow-lg shadow-teal-600/20"
+              >
+                ➤
+              </button>
             </div>
 
-            <button
-              type="submit"
-              disabled={isLoading || isTranscribing || (!input.trim() && !selectedFile)}
-              className="bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white px-4 py-3 rounded-2xl text-xs md:text-sm font-medium transition-all shrink-0 cursor-pointer shadow-lg shadow-teal-600/20"
-            >
-              {isLoading || isTranscribing ? "..." : t("send")}
-            </button>
+            {isRecording && (
+              <div className="flex justify-center py-1">
+                <AudioWaveform />
+              </div>
+            )}
           </form>
         </div>
 
       </div>
 
-      {/* مدال اتمام سهمیه / قفل */}
+      {/* مودال اتمام سهمیه / قفل موقت */}
       {showCreditModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className={`max-w-md w-full p-6 rounded-3xl shadow-2xl ${isDark ? "bg-slate-900 border border-slate-800 text-slate-100" : "bg-white text-slate-800"} text-center space-y-4`}>
-            <div className="text-4xl">⏳</div>
-            <h3 className="font-bold text-lg text-teal-500">پایان سهمیه رایگان</h3>
-            <p className="text-xs md:text-sm leading-relaxed text-slate-400">{modalMessage}</p>
-            <div className="pt-2 flex flex-col gap-2">
-              <button
-                onClick={() => router.push("/dashboard/subscription")}
-                className="w-full bg-teal-600 hover:bg-teal-700 text-white py-3 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-lg shadow-teal-600/20"
-              >
-                ارتقای اشتراک و ادامه گفتگو
-              </button>
-              <button
-                onClick={() => setShowCreditModal(false)}
-                className={`w-full py-2.5 rounded-xl text-xs font-medium ${isDark ? "bg-slate-800 hover:bg-slate-700 text-slate-300" : "bg-slate-100 hover:bg-slate-200 text-slate-700"}`}
-              >
-                بستن
-              </button>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className={`max-w-md w-full ${isDark ? "bg-slate-900 border-slate-800 text-slate-100" : "bg-white border-slate-200 text-slate-800"} border rounded-3xl p-6 shadow-2xl flex flex-col gap-4 text-center animate-in fade-in zoom-in-95`}>
+            <div className="w-12 h-12 bg-amber-500/20 text-amber-500 rounded-2xl flex items-center justify-center mx-auto text-xl font-bold">
+              ⏳
             </div>
+            <h3 className="font-bold text-lg">محدودیت سهمیه گفتگو</h3>
+            <p className="text-xs leading-relaxed text-slate-400">{modalMessage}</p>
+            <button
+              onClick={() => setShowCreditModal(false)}
+              className="bg-teal-600 hover:bg-teal-500 text-white py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer"
+            >
+              متوجه شدم
+            </button>
           </div>
         </div>
       )}
