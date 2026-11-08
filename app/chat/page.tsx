@@ -92,14 +92,29 @@ export default function ChatPage() {
   const INITIAL_GREETING: Message = {
     role: "assistant",
     content: lang === 'fa'
-      ? "سلام دوست عزیزم. من «نوا» هستم؛ همراه و گوش شنوای تو. پیام‌های ما برای حفظ امنیت و محرمانگی، پس از یک هفته به صورت خودکار پاک می‌شوند. امروز حالت چطوره؟ هر چیزی که ذهنت رو درگیر کرده می‌تونی راحت با من در میان بذاری."
-      : "Hello my dear friend. I am Nava; your companion and listener. Messages are automatically deleted after a week for security and confidentiality. How are you today? You can comfortably share anything on your mind with me."
+      ? "سلام دوست عزیزم. من «نوا» هستم؛ همراه و گوش شنوای تو. امروز حالت چطوره؟ هر چیزی که ذهنت رو درگیر کرده می‌تونی راحت با من در میان بذاری."
+      : "Hello my dear friend. I am Nava; your companion and listener. How are you today? You can comfortably share anything on your mind with me."
   };
 
   const [showWarningBanner, setShowWarningBanner] = useState(false);
   const [warningText, setWarningText] = useState("");
   const [showCreditModal, setShowCreditModal] = useState(false);
   const [modalMessage, setModalMessage] = useState("سهمیه پیام‌های رایگان شما به اتمام رسیده است.");
+  
+  // مدال ورود به چت برای اطلاع‌رسانی حذف خودکار پس از یک هفته
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+
+  useEffect(() => {
+    const hasSeenPrivacy = localStorage.getItem("nava_privacy_modal_seen");
+    if (!hasSeenPrivacy) {
+      setShowPrivacyModal(true);
+    }
+  }, []);
+
+  const handleClosePrivacyModal = () => {
+    localStorage.setItem("nava_privacy_modal_seen", "true");
+    setShowPrivacyModal(false);
+  };
   
   const [remainingFreeMessages, setRemainingFreeMessages] = useState<number | null>(null);
   const [messages, setMessages] = useState<Message[]>([INITIAL_GREETING]);
@@ -296,7 +311,6 @@ export default function ChatPage() {
         <div class="chat-container">
           <div class="header">
             <h1>گزارش گفتگو با دستیار هوشمند نوا</h1>
-            <p>توجه: پیام‌ها پس از یک هفته به صورت خودکار حذف می‌شوند.</p>
             <p>تاریخ استخراج: ${new Date().toLocaleDateString(lang === 'fa' ? 'fa-IR' : 'en-US')}</p>
           </div>
           ${messages.map(m => `
@@ -320,7 +334,7 @@ export default function ChatPage() {
   const handleExportTxt = () => {
     setIsReportMenuOpen(false);
     setIsHeaderMenuOpen(false);
-    const textContent = `[توجه: پیام‌ها برای حفظ محرمانگی پس از ۷ روز پاک می‌شوند]\n\n` + messages
+    const textContent = messages
       .map((m) => `${m.role === "user" ? "شما" : "نوا"}:\n${m.content}\n\n-----------------------------------\n`)
       .join("");
     
@@ -341,7 +355,6 @@ export default function ChatPage() {
       <head><meta charset="utf-8"><title>Chat Export</title></head>
       <body style="font-family: Tahoma, sans-serif; direction: ${lang === 'fa' ? 'rtl' : 'ltr'};">
         <h2 style="color: #0d9488; text-align: center;">خروجی گفتگو با دستیار نوا</h2>
-        <p style="text-align: center; color: #64748b; font-size: 12px;">(پیام‌ها پس از ۷ روز به صورت خودکار پاک می‌شوند)</p>
         ${messages.map(m => `
           <div style="margin-bottom: 15px; padding: 12px; border-radius: 8px; background-color: ${m.role === 'user' ? '#e0f2f1' : '#f8fafc'}; border: 1px solid #cbd5e1;">
             <strong style="color: ${m.role === 'user' ? '#0f766e' : '#334155'};">${m.role === 'user' ? 'شما:' : 'نوا:'}</strong>
@@ -906,11 +919,6 @@ export default function ChatPage() {
               )}
             </div>
 
-            {/* نشانگر انقضای ۷ روزه */}
-            <div className="hidden lg:flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-lg bg-teal-500/10 text-teal-400 border border-teal-500/20">
-              <span>🔒 خوده‌حذف‌شونده ۷ روزه</span>
-            </div>
-
             {/* دکمه تم */}
             <button
               onClick={toggleTheme}
@@ -1087,6 +1095,27 @@ export default function ChatPage() {
         </div>
 
       </div>
+
+      {/* مودال حریم خصوصی / پاک شدن پیام‌ها پس از یک هفته به محض ورود کاربر */}
+      {showPrivacyModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <div className={`max-w-md w-full ${isDark ? "bg-slate-900 border-slate-800 text-slate-100" : "bg-white border-slate-200 text-slate-800"} border rounded-3xl p-6 shadow-2xl flex flex-col gap-4 text-center animate-in fade-in zoom-in-95`}>
+            <div className="w-14 h-14 bg-teal-500/20 text-teal-400 rounded-2xl flex items-center justify-center mx-auto text-2xl font-bold">
+              🔒
+            </div>
+            <h3 className="font-bold text-lg">امنیت و حریم خصوصی در نوا</h3>
+            <p className="text-xs leading-relaxed text-slate-400">
+              برای حفظ امنیت و محرمانگی، تمامی پیام‌ها و گفتگوهای شما پس از **یک هفته** به صورت خودکار از پایگاه داده پاک می‌شوند تا با خیال راحت بتوانید افکار و دغدغه‌هایتان را با نوا در میان بگذارید.
+            </p>
+            <button
+              onClick={handleClosePrivacyModal}
+              className="bg-teal-600 hover:bg-teal-500 text-white py-3 rounded-xl text-xs font-bold transition-all cursor-pointer mt-2"
+            >
+              متوجه شدم، ورود به چت
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* مودال اتمام سهمیه / قفل موقت */}
       {showCreditModal && (
