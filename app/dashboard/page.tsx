@@ -333,6 +333,13 @@ export default async function DashboardPage() {
                 <span>{t("reports")}</span>
               </Link>
               
+                 <Link
+                href="/ststs"
+                className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-950/60 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 hover:text-teal-400 transition-all shadow-inner"
+              >
+                <span>📊</span>
+                <span>{t("ststs")}</span>
+              </Link>
               <Link
                 href="/tickets"
                 className="relative flex items-center gap-2 p-2.5 rounded-xl bg-slate-950/60 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 hover:text-teal-400 transition-all shadow-inner"
