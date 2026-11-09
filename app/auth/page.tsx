@@ -178,7 +178,8 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const [captchaCode, setCaptchaCode] = useState("");
+  const [captchaChars, setCaptchaChars] = useState<{ char: string; color: string; rotate: string; yOffset: string }[]>([]);
+  const [captchaPlainCode, setCaptchaPlainCode] = useState("");
   const [captchaInput, setCaptchaInput] = useState("");
 
   const [timeLeft, setTimeLeft] = useState(120);
@@ -192,13 +193,26 @@ export default function AuthPage() {
     generateAdvancedCaptcha();
   }, []);
 
+  // 🎨 ژنراتور کپچای گرافیکی، رنگارنگ و چشم‌نواز
   const generateAdvancedCaptcha = () => {
-    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-    let result = "";
+    const charsList = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    const colors = ["text-teal-300", "text-emerald-400", "text-cyan-300", "text-teal-200", "text-sky-300"];
+    let plain = "";
+    let generated = [];
+
     for (let i = 0; i < 5; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
+      const char = charsList.charAt(Math.floor(Math.random() * charsList.length));
+      plain += char;
+      generated.push({
+        char,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        rotate: `${Math.floor(Math.random() * 24) - 12}deg`,
+        yOffset: `${Math.floor(Math.random() * 6) - 3}px`,
+      });
     }
-    setCaptchaCode(result);
+
+    setCaptchaPlainCode(plain);
+    setCaptchaChars(generated);
     setCaptchaInput("");
   };
 
@@ -236,7 +250,6 @@ export default function AuthPage() {
     if (isLocked) return;
     const val = e.target.value.replace(/\D/g, "");
     const selectedCountry = COUNTRIES.find((c) => c.code === countryCode);
-    // امکان ورود با صفر یا بدون صفر
     const maxLen = (selectedCountry ? selectedCountry.length : 10) + 1;
 
     if (val.length <= maxLen) {
@@ -258,7 +271,7 @@ export default function AuthPage() {
       return;
     }
 
-    if (captchaInput.trim().toUpperCase() !== captchaCode) {
+    if (captchaInput.trim().toUpperCase() !== captchaPlainCode) {
       setError("کد امنیتی (کپچا) وارد شده اشتباه است.");
       generateAdvancedCaptcha();
       return;
@@ -360,20 +373,20 @@ export default function AuthPage() {
   return (
     <div dir="rtl" className="relative flex min-h-[100dvh] w-full items-center justify-center bg-[#070b14] text-slate-100 font-sans overflow-x-hidden p-4 sm:p-6">
       
-      {/* 🖼️ تصویر زمینه pic.jpg ریسپانسیو و بهینه برای موبایل و دسکتاپ */}
+      {/* 🖼️ تصویر زمینه pic.jpg ثابت و ریسپانسیو برای موبایل و دسکتاپ */}
       <div 
-        className="fixed inset-0 w-full h-full bg-cover bg-center bg-no-repeat opacity-40 pointer-events-none"
+        className="fixed inset-0 w-screen h-[100dvh] bg-cover bg-center bg-no-repeat opacity-45 pointer-events-none"
         style={{ backgroundImage: `url('/pic.jpg')` }}
       ></div>
 
       {/* لایه گرادیان تیره روی تصویر برای خوانایی بهتر */}
-      <div className="fixed inset-0 w-full h-full bg-gradient-to-br from-[#070b14]/90 via-[#070b14]/75 to-[#070b14]/90 pointer-events-none"></div>
+      <div className="fixed inset-0 w-screen h-[100dvh] bg-gradient-to-br from-[#070b14]/90 via-[#070b14]/80 to-[#070b14]/90 pointer-events-none"></div>
 
       {/* 🔮 عناصر نورانی پس‌زمینه */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] sm:w-[450px] h-[300px] sm:h-[450px] bg-gradient-to-tr from-teal-500/20 to-emerald-500/15 rounded-full blur-[100px] sm:blur-[130px] pointer-events-none animate-pulse"></div>
 
       {/* 💳 کارت اصلی ورود کاملاً ریسپانسیو */}
-      <div className="relative w-full max-w-md bg-slate-900/80 border border-teal-500/30 rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-10 shadow-[0_0_50px_rgba(20,184,166,0.15)] backdrop-blur-2xl transition-all duration-300 my-auto">
+      <div className="relative w-full max-w-md bg-slate-900/85 border border-teal-500/30 rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-10 shadow-[0_0_50px_rgba(20,184,166,0.15)] backdrop-blur-2xl transition-all duration-300 my-auto z-10">
         
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/3 h-[2px] bg-gradient-to-r from-transparent via-teal-400 to-transparent shadow-[0_0_10px_#2dd4bf]"></div>
 
@@ -428,7 +441,7 @@ export default function AuthPage() {
                   ))}
                 </select>
 
-                {/* فیلد بزرگ‌تر و بهینه‌شده برای وارد کردن شماره با صفر */}
+                {/* فیلد شماره موبایل با پشتیبانی از صفر */}
                 <input
                   type="tel"
                   value={phone}
@@ -440,21 +453,35 @@ export default function AuthPage() {
               </div>
             </div>
 
-            {/* بخش کپچای جدید و زیبا */}
+            {/* 🌟 کپچای گرافیکی، رنگارنگ و چشم‌نواز جدید */}
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-2">کد امنیتی</label>
               <div className="flex gap-2.5 items-center">
                 <div 
-                  className="flex-1 bg-gradient-to-r from-slate-950 via-teal-950/40 to-slate-950 border border-teal-500/30 rounded-2xl py-3 px-4 text-center tracking-[10px] font-mono font-black text-teal-300 text-lg sm:text-xl select-none relative overflow-hidden shadow-inner flex items-center justify-center"
+                  className="flex-1 bg-gradient-to-br from-slate-950 via-teal-950/30 to-slate-950 border border-teal-500/35 rounded-2xl py-3 px-4 text-center font-mono font-black text-xl sm:text-2xl select-none relative overflow-hidden shadow-inner flex items-center justify-center gap-1.5"
                   style={{
-                    backgroundImage: "radial-gradient(circle, rgba(20,184,166,0.1) 10%, transparent 10%)",
-                    backgroundSize: "16px 16px"
+                    backgroundImage: "linear-gradient(rgba(20, 184, 166, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(20, 184, 166, 0.05) 1px, transparent 1px)",
+                    backgroundSize: "12px 12px"
                   }}
                 >
-                  <span className="relative z-10 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" style={{ transform: "skewX(-5deg)" }}>
-                    {captchaCode}
-                  </span>
+                  {/* خطوط نویز تزئینی در پس‌زمینه کپچا */}
+                  <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-teal-500/10 via-transparent to-transparent pointer-events-none"></div>
+                  
+                  {captchaChars.map((item, index) => (
+                    <span
+                      key={index}
+                      className={`inline-block ${item.color} drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] transition-transform`}
+                      style={{
+                        transform: `rotate(${item.rotate}) translateY(${item.yOffset})`,
+                        fontFamily: "monospace",
+                        letterSpacing: "2px"
+                      }}
+                    >
+                      {item.char}
+                    </span>
+                  ))}
                 </div>
+
                 <button
                   type="button"
                   onClick={generateAdvancedCaptcha}
