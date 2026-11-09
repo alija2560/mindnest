@@ -193,7 +193,6 @@ export default function AuthPage() {
     generateAdvancedCaptcha();
   }, []);
 
-  // 🎨 ژنراتور کپچای گرافیکی، رنگارنگ و چشم‌نواز
   const generateAdvancedCaptcha = () => {
     const charsList = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     const colors = ["text-teal-300", "text-emerald-400", "text-cyan-300", "text-teal-200", "text-sky-300"];
@@ -271,7 +270,8 @@ export default function AuthPage() {
       return;
     }
 
-    if (captchaInput.trim().toUpperCase() !== captchaPlainCode) {
+    // 🔍 بررسی دقیق مطابقت کپچا (تبدیل به حروف بزرگ برای جلوگیری از حساسیت به Caps Lock)
+    if (captchaInput.trim().toUpperCase() !== captchaPlainCode.toUpperCase()) {
       setError("کد امنیتی (کپچا) وارد شده اشتباه است.");
       generateAdvancedCaptcha();
       return;
@@ -283,10 +283,11 @@ export default function AuthPage() {
     try {
       const fullPhone = `${countryCode}${cleanPhone}`;
 
+      // 🛠️ ارسال کد کپچا همراه با شماره تلفن به سمت سرور (در صورت نیاز به بررسی در بک‌اند)
       const res = await fetch("/api/auth/send-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: fullPhone }),
+        body: JSON.stringify({ phone: fullPhone, captcha: captchaInput.trim() }),
       });
 
       const data = await res.json();
@@ -301,6 +302,7 @@ export default function AuthPage() {
       }
     } catch (err) {
       setError("خطا در ارتباط با سرور.");
+      generateAdvancedCaptcha();
     } finally {
       setLoading(false);
     }
@@ -441,7 +443,6 @@ export default function AuthPage() {
                   ))}
                 </select>
 
-                {/* فیلد شماره موبایل با پشتیبانی از صفر */}
                 <input
                   type="tel"
                   value={phone}
@@ -453,7 +454,6 @@ export default function AuthPage() {
               </div>
             </div>
 
-            {/* 🌟 کپچای گرافیکی، رنگارنگ و چشم‌نواز جدید */}
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-2">کد امنیتی</label>
               <div className="flex gap-2.5 items-center">
@@ -464,7 +464,6 @@ export default function AuthPage() {
                     backgroundSize: "12px 12px"
                   }}
                 >
-                  {/* خطوط نویز تزئینی در پس‌زمینه کپچا */}
                   <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-teal-500/10 via-transparent to-transparent pointer-events-none"></div>
                   
                   {captchaChars.map((item, index) => (
