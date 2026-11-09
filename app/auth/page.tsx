@@ -178,28 +178,41 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const [captchaCode, setCaptchaCode] = useState("");
+  const [captchaChars, setCaptchaChars] = useState<{ char: string; color: string; rotate: string; yOffset: string }[]>([]);
+  const [captchaPlainCode, setCaptchaPlainCode] = useState("");
   const [captchaInput, setCaptchaInput] = useState("");
 
   const [timeLeft, setTimeLeft] = useState(120);
   const [canResend, setCanResend] = useState(false);
 
-  // 🔒 وضعیت‌های جدید برای مدیریت قفل ۵ دقیقه‌ای بعد از ۳ بار اشتباه
   const [attempts, setAttempts] = useState(0);
   const [isLocked, setIsLocked] = useState(false);
-  const [lockCountdown, setLockCountdown] = useState(300); // ۳۰۰ ثانیه (۵ دقیقه)
+  const [lockCountdown, setLockCountdown] = useState(300);
 
   useEffect(() => {
     generateAdvancedCaptcha();
   }, []);
 
+  // 🎨 ژنراتور کپچای گرافیکی مدرن، شیک و رنگارنگ
   const generateAdvancedCaptcha = () => {
-    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-    let result = "";
-    for (let i = 0; i < 4; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    const charsList = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    const colors = ["text-teal-300", "text-emerald-400", "text-cyan-300", "text-teal-200", "text-sky-300"];
+    let plain = "";
+    let generated = [];
+
+    for (let i = 0; i < 5; i++) {
+      const char = charsList.charAt(Math.floor(Math.random() * charsList.length));
+      plain += char;
+      generated.push({
+        char,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        rotate: `${Math.floor(Math.random() * 20) - 10}deg`,
+        yOffset: `${Math.floor(Math.random() * 4) - 2}px`,
+      });
     }
-    setCaptchaCode(result);
+
+    setCaptchaPlainCode(plain);
+    setCaptchaChars(generated);
     setCaptchaInput("");
   };
 
@@ -215,7 +228,6 @@ export default function AuthPage() {
     return () => clearInterval(timer);
   }, [step, timeLeft, isLocked]);
 
-  // 🔒 تایمر معکوس برای قفل ۵ دقیقه‌ای
   useEffect(() => {
     let lockTimer: NodeJS.Timeout;
     if (isLocked && lockCountdown > 0) {
@@ -238,13 +250,11 @@ export default function AuthPage() {
     if (isLocked) return;
     const val = e.target.value.replace(/\D/g, "");
     const selectedCountry = COUNTRIES.find((c) => c.code === countryCode);
-    const maxLen = selectedCountry ? selectedCountry.length : 10;
+    const maxLen = (selectedCountry ? selectedCountry.length : 10) + 1;
 
     if (val.length <= maxLen) {
       setPhone(val);
       setError("");
-    } else {
-      setError(`شماره تماس وارد شده نباید بیشتر از ${maxLen} رقم باشد.`);
     }
   };
 
@@ -252,15 +262,20 @@ export default function AuthPage() {
     e.preventDefault();
     if (isLocked) return;
 
-    const selectedCountry = COUNTRIES.find((c) => c.code === countryCode);
-    const targetLen = selectedCountry ? selectedCountry.length : 10;
+    const selectedCountry = COUNTRIES.find((c) => c.code === countryCode) || { length: 10 };
+    
+    // 📱 پاکسازی هوشمند شماره موبایل (پذیرش چه با صفر و چه بدون صفر)
+    const rawPhone = phone.trim();
+    const cleanPhone = rawPhone.startsWith("0") ? rawPhone.slice(1) : rawPhone;
 
-    if (!phone || phone.length < targetLen) {
-      setError(`لطفاً شماره موبایل کامل و معتبر (${targetLen} رقمی) وارد کنید.`);
+    // بررسی حداقل طول استاندارد شماره موبایل
+    if (!cleanPhone || cleanPhone.length < selectedCountry.length - 2) {
+      setError(`لطفاً شماره موبایل معتبر وارد کنید.`);
       return;
     }
 
-    if (captchaInput.trim().toUpperCase() !== captchaCode) {
+    // مقایسه ایمن و بدون خطای کپچا
+    if (captchaInput.trim().toUpperCase() !== captchaPlainCode.toUpperCase()) {
       setError("کد امنیتی (کپچا) وارد شده اشتباه است.");
       generateAdvancedCaptcha();
       return;
@@ -270,12 +285,13 @@ export default function AuthPage() {
     setError("");
 
     try {
-      const fullPhone = `${countryCode}${phone.startsWith('0') ? phone.slice(1) : phone}`;
+      // ارسال فرمت استاندارد شماره با پیش‌شماره به سرور
+      const fullPhone = `${countryCode}${cleanPhone}`;
 
       const res = await fetch("/api/auth/send-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: fullPhone }),
+        body: JSON.stringify({ phone: fullPhone, captcha: captchaInput.trim() }),
       });
 
       const data = await res.json();
@@ -290,6 +306,7 @@ export default function AuthPage() {
       }
     } catch (err) {
       setError("خطا در ارتباط با سرور.");
+      generateAdvancedCaptcha();
     } finally {
       setLoading(false);
     }
@@ -308,7 +325,9 @@ export default function AuthPage() {
     setError("");
 
     try {
-      const fullPhone = `${countryCode}${phone.startsWith('0') ? phone.slice(1) : phone}`;
+      const rawPhone = phone.trim();
+      const cleanPhone = rawPhone.startsWith("0") ? rawPhone.slice(1) : rawPhone;
+      const fullPhone = `${countryCode}${cleanPhone}`;
 
       const res = await fetch("/api/auth/verify-otp", {
         method: "POST",
@@ -322,7 +341,6 @@ export default function AuthPage() {
       if (res.ok) {
         window.location.replace("/dashboard");
       } else {
-        // بررسی پاسخ قفل سرور (وضعیت 429)
         if (res.status === 429 || data.remainingTime) {
           setIsLocked(true);
           setLockCountdown(data.remainingTime || 300);
@@ -360,42 +378,42 @@ export default function AuthPage() {
   };
 
   return (
-    <div dir="rtl" className="relative flex h-screen w-screen items-center justify-center bg-[#070b14] text-slate-100 font-sans overflow-hidden px-4">
+    <div dir="rtl" className="relative flex min-h-[100dvh] w-full items-center justify-center bg-[#070b14] text-slate-100 font-sans overflow-x-hidden p-4 sm:p-6">
       
-      {/* 🖼️ تصویر زمینه pic.jpg با افکت کاور و پوشش تیره برای خوانایی بهتر */}
+      {/* 🖼️ تصویر زمینه pic.jpg کاملاً ثابت و ریسپانسیو برای موبایل و دسکتاپ */}
       <div 
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-40 pointer-events-none"
+        className="fixed inset-0 w-screen h-[100dvh] bg-cover bg-center bg-no-repeat opacity-45 pointer-events-none"
         style={{ backgroundImage: `url('/pic.jpg')` }}
       ></div>
 
-      {/* لایه گرادیان تیره روی تصویر برای تثبیت کنتراست */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[#070b14]/90 via-[#070b14]/75 to-[#070b14]/90 pointer-events-none"></div>
+      {/* لایه گرادیان تیره روی تصویر برای خوانایی بی‌نقص */}
+      <div className="fixed inset-0 w-screen h-[100dvh] bg-gradient-to-br from-[#070b14]/90 via-[#070b14]/80 to-[#070b14]/90 pointer-events-none"></div>
 
-      {/* 🔮 عناصر نورانی نئونی پس‌زمینه */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[450px] h-[450px] bg-gradient-to-tr from-teal-500/20 to-emerald-500/15 rounded-full blur-[130px] pointer-events-none animate-pulse"></div>
+      {/* 🔮 عناصر نورانی پس‌زمینه */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] sm:w-[450px] h-[300px] sm:h-[450px] bg-gradient-to-tr from-teal-500/20 to-emerald-500/15 rounded-full blur-[100px] sm:blur-[130px] pointer-events-none animate-pulse"></div>
 
-      {/* 💳 کارت اصلی ورود */}
-      <div className="relative w-full max-w-md bg-slate-900/75 border border-teal-500/25 rounded-[2.5rem] p-8 md:p-10 shadow-[0_0_50px_rgba(20,184,166,0.12)] backdrop-blur-2xl transition-all duration-300">
+      {/* 💳 کارت اصلی ورود کاملاً ریسپانسیو */}
+      <div className="relative w-full max-w-md bg-slate-900/85 border border-teal-500/30 rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-10 shadow-[0_0_50px_rgba(20,184,166,0.15)] backdrop-blur-2xl transition-all duration-300 my-auto z-10">
         
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/3 h-[2px] bg-gradient-to-r from-transparent via-teal-400 to-transparent shadow-[0_0_10px_#2dd4bf]"></div>
 
-        <div className="text-center mb-8">
-            <div className="relative inline-flex p-3.5 rounded-3xl bg-teal-950/60 border border-teal-500/30 mb-3.5 shadow-inner">
-              <NavaLogo className="w-11 h-11 drop-shadow-[0_0_8px_rgba(45,212,191,0.4)]" />
+        <div className="text-center mb-6 sm:mb-8">
+            <div className="relative inline-flex p-3 rounded-2xl sm:rounded-3xl bg-teal-950/60 border border-teal-500/30 mb-3 shadow-inner">
+              <NavaLogo className="w-10 h-10 sm:w-11 sm:h-11 drop-shadow-[0_0_8px_rgba(45,212,191,0.4)]" />
             </div>
-            <h1 className="text-xl font-bold tracking-tight text-white bg-gradient-to-r from-white via-slate-200 to-teal-200 bg-clip-text text-transparent">
+            <h1 className="text-lg sm:text-xl font-bold tracking-tight text-white bg-gradient-to-r from-white via-slate-200 to-teal-200 bg-clip-text text-transparent">
               ورود به نوا
             </h1>
-            <p className="text-xs text-teal-400/80 font-medium mt-1.5">پناهگاه امن ذهن و افکار شما</p>
+            <p className="text-xs text-teal-400/80 font-medium mt-1">پناهگاه امن ذهن و افکار شما</p>
         </div>
 
         {error && (
-          <div className="mb-6 p-3.5 rounded-2xl bg-rose-950/40 border border-rose-500/30 text-rose-300 text-xs text-center leading-relaxed shadow-lg backdrop-blur-md">
+          <div className="mb-5 p-3 rounded-xl bg-rose-950/50 border border-rose-500/30 text-rose-300 text-xs text-center leading-relaxed shadow-lg backdrop-blur-md">
             ⚠️ {error}
           </div>
         )}
 
-        {/* 🔒 اگر حساب قفل بود، تایمر ۵ دقیقه‌ای را نمایش بده */}
+        {/* 🔒 اگر حساب قفل بود */}
         {isLocked ? (
           <div className="text-center space-y-4 py-4">
             <div className="w-14 h-14 mx-auto flex items-center justify-center rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400 text-2xl animate-pulse shadow-inner">
@@ -413,7 +431,7 @@ export default function AuthPage() {
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-2">شماره موبایل</label>
               
-              <div className="flex gap-2.5" dir="ltr">
+              <div className="flex gap-2" dir="ltr">
                 <select
                   value={countryCode}
                   onChange={(e) => {
@@ -421,7 +439,7 @@ export default function AuthPage() {
                     setPhone("");
                     setError("");
                   }}
-                  className="w-[115px] bg-slate-950/90 border border-slate-800 hover:border-teal-500/50 focus:border-teal-400 rounded-2xl px-2 py-3 text-xs text-teal-300 outline-none transition-all font-mono cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%232dd4bf%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-[length:12px_12px] bg-[left_10px_center] bg-no-repeat pl-7 text-center shadow-inner"
+                  className="w-[110px] bg-slate-950/90 border border-slate-800 hover:border-teal-500/50 focus:border-teal-400 rounded-2xl px-2 py-3.5 text-xs text-teal-300 outline-none transition-all font-mono cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%232dd4bf%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-[length:12px_12px] bg-[left_8px_center] bg-no-repeat pl-6 text-center shadow-inner shrink-0"
                 >
                   {COUNTRIES.map((c) => (
                     <option key={`${c.code}-${c.name}`} value={c.code} className="bg-slate-900 text-slate-100 py-1 font-mono">
@@ -434,26 +452,45 @@ export default function AuthPage() {
                   type="tel"
                   value={phone}
                   onChange={handlePhoneChange}
-                  placeholder={countryCode === "+98" ? "9123456789" : "شماره موبایل"}
-                  className="w-full bg-slate-950/90 border border-slate-800 hover:border-teal-500/50 focus:border-teal-400 rounded-2xl px-4 py-3 text-sm text-white placeholder-slate-600 outline-none transition-all text-left font-mono shadow-inner"
+                  placeholder={countryCode === "+98" ? "09123456789" : "شماره موبایل"}
+                  className="w-full bg-slate-950/90 border border-slate-800 hover:border-teal-500/50 focus:border-teal-400 rounded-2xl px-4 py-3.5 text-sm sm:text-base text-white placeholder-slate-600 outline-none transition-all text-left font-mono shadow-inner tracking-wider"
                   dir="ltr"
                 />
               </div>
             </div>
 
+            {/* 🌟 کپچای گرافیکی مدرن و شیک */}
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-2">کد امنیتی</label>
-              <div className="flex gap-3 items-center">
+              <div className="flex gap-2.5 items-center">
                 <div 
-                  className="flex-1 bg-gradient-to-r from-slate-950 to-teal-950/80 border border-teal-500/30 rounded-2xl py-3 text-center tracking-[12px] font-mono font-black text-teal-300 text-lg select-none relative overflow-hidden shadow-inner"
-                  style={{ textDecoration: "line-through", fontStyle: "italic" }}
+                  className="flex-1 bg-gradient-to-br from-slate-950 via-teal-950/30 to-slate-950 border border-teal-500/35 rounded-2xl py-3 px-4 text-center font-mono font-black text-xl sm:text-2xl select-none relative overflow-hidden shadow-inner flex items-center justify-center gap-1.5"
+                  style={{
+                    backgroundImage: "linear-gradient(rgba(20, 184, 166, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(20, 184, 166, 0.05) 1px, transparent 1px)",
+                    backgroundSize: "12px 12px"
+                  }}
                 >
-                  {captchaCode}
+                  <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-teal-500/10 via-transparent to-transparent pointer-events-none"></div>
+                  
+                  {captchaChars.map((item, index) => (
+                    <span
+                      key={index}
+                      className={`inline-block ${item.color} drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] transition-transform`}
+                      style={{
+                        transform: `rotate(${item.rotate}) translateY(${item.yOffset})`,
+                        fontFamily: "monospace",
+                        letterSpacing: "2px"
+                      }}
+                    >
+                      {item.char}
+                    </span>
+                  ))}
                 </div>
+
                 <button
                   type="button"
                   onClick={generateAdvancedCaptcha}
-                  className="p-3.5 bg-slate-950 hover:bg-teal-950/50 border border-slate-800 hover:border-teal-500/40 rounded-2xl text-slate-400 hover:text-teal-300 transition-all cursor-pointer shadow-sm"
+                  className="p-3.5 bg-slate-950 hover:bg-teal-950/50 border border-slate-800 hover:border-teal-500/40 rounded-2xl text-slate-400 hover:text-teal-300 transition-all cursor-pointer shadow-sm shrink-0"
                   title="تغییر کد امنیتی"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
@@ -465,8 +502,8 @@ export default function AuthPage() {
                 type="text"
                 value={captchaInput}
                 onChange={(e) => setCaptchaInput(e.target.value)}
-                placeholder="کد داخل تصویر را وارد کنید"
-                className="w-full mt-3 bg-slate-950/90 border border-slate-800 hover:border-teal-500/50 focus:border-teal-400 rounded-2xl px-4 py-3 text-sm text-white placeholder-slate-600 outline-none transition-all text-center font-mono tracking-widest uppercase shadow-inner"
+                placeholder="کاراکترهای تصویر را وارد کنید"
+                className="w-full mt-2.5 bg-slate-950/90 border border-slate-800 hover:border-teal-500/50 focus:border-teal-400 rounded-2xl px-4 py-3 text-sm text-white placeholder-slate-600 outline-none transition-all text-center font-mono tracking-widest uppercase shadow-inner"
                 dir="ltr"
               />
             </div>
@@ -474,7 +511,7 @@ export default function AuthPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full mt-2 bg-gradient-to-r from-teal-500 via-emerald-400 to-teal-500 hover:from-teal-400 hover:to-emerald-300 text-slate-950 font-black py-3.5 rounded-2xl transition-all shadow-[0_0_20px_rgba(20,184,166,0.3)] disabled:opacity-50 cursor-pointer text-sm"
+              className="w-full mt-2 bg-gradient-to-r from-teal-500 via-emerald-400 to-teal-500 hover:from-teal-400 hover:to-emerald-300 text-slate-950 font-black py-4 rounded-2xl transition-all shadow-[0_0_20px_rgba(20,184,166,0.3)] disabled:opacity-50 cursor-pointer text-sm"
             >
               {loading ? "در حال ارسال..." : "دریافت کد تایید"}
             </button>
@@ -482,7 +519,7 @@ export default function AuthPage() {
         ) : (
           <form onSubmit={handleVerifyOtp} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-2.5 text-center">
+              <label className="block text-xs font-semibold text-slate-300 mb-3 text-center">
                 کد تایید ۴ رقمی ارسال شده به <span className="font-mono text-teal-300" dir="ltr">{countryCode} {phone}</span>
               </label>
               
@@ -492,7 +529,7 @@ export default function AuthPage() {
                 value={otp}
                 onChange={(e) => setOtp(e.target.value)}
                 placeholder="••••"
-                className="w-full bg-slate-950/90 border border-teal-500/40 focus:border-teal-300 rounded-2xl px-4 py-3.5 text-center tracking-[20px] font-mono font-bold text-teal-300 text-2xl outline-none transition-all shadow-[0_0_15px_rgba(20,184,166,0.2)]"
+                className="w-full bg-slate-950/90 border border-teal-500/40 focus:border-teal-300 rounded-2xl px-4 py-4 text-center tracking-[20px] font-mono font-bold text-teal-300 text-2xl outline-none transition-all shadow-[0_0_15px_rgba(20,184,166,0.2)]"
                 dir="ltr"
               />
             </div>
@@ -508,7 +545,7 @@ export default function AuthPage() {
             <button
               type="submit"
               disabled={loading || timeLeft === 0}
-              className="w-full mt-2 bg-gradient-to-r from-teal-500 via-emerald-400 to-teal-500 hover:from-teal-400 hover:to-emerald-300 text-slate-950 font-black py-3.5 rounded-2xl transition-all shadow-[0_0_20px_rgba(20,184,166,0.3)] disabled:opacity-50 cursor-pointer text-sm"
+              className="w-full mt-2 bg-gradient-to-r from-teal-500 via-emerald-400 to-teal-500 hover:from-teal-400 hover:to-emerald-300 text-slate-950 font-black py-4 rounded-2xl transition-all shadow-[0_0_20px_rgba(20,184,166,0.3)] disabled:opacity-50 cursor-pointer text-sm"
             >
               {loading ? "در حال بررسی..." : "تایید و ورود"}
             </button>
