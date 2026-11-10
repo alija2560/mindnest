@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">nava-app</string>
+    <string name="title_activity_main">nava-app</string>
+    <string name="package_name">mindnest.ir</string>
+    <string name="custom_url_scheme">mindnest.ir</string>
+</resources>
