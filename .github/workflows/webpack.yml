@@ -7,8 +7,22 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
+    
+    # پاک کردن متغیرهای پروکسی برای جلوگیری از تلاش برای دانلود git-proxy
+    env:
+      http_proxy: ""
+      https_proxy: ""
+      HTTP_PROXY: ""
+      HTTPS_PROXY: ""
+      all_proxy: ""
+      ALL_PROXY: ""
 
     steps:
+    - name: Clear Proxy and Config Git
+      run: |
+        git config --global --unset http.proxy || true
+        git config --global --unset https.proxy || true
+
     - name: Checkout Repository
       uses: actions/checkout@v4
 
