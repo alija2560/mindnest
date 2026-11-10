@@ -40,8 +40,10 @@ jobs:
     - name: Build Web Assets
       run: npm run build
 
-    - name: Add Capacitor Android Platform (if missing)
-      run: npx cap add android || true
+    - name: Force Recreate Capacitor Android Platform
+      run: |
+        rm -rf android
+        npx cap add android
 
     - name: Sync Capacitor Android
       run: npx cap sync android
