@@ -40,13 +40,15 @@ jobs:
     - name: Build Web Assets
       run: npm run build
 
+    - name: Create Dummy Out Directory for Capacitor
+      run: |
+        mkdir -p out
+        echo '<!DOCTYPE html><html><head><title>MindNest</title></head><body></body></html>' > out/index.html
+
     - name: Force Recreate Capacitor Android Platform
       run: |
         rm -rf android
         npx cap add android
-
-    - name: Generate Android App Icons
-      run: npx @capacitor/assets generate --android
 
     - name: Sync Capacitor Android
       run: npx cap sync android
