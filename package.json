@@ -12,6 +12,7 @@
     "@capacitor/android": "^8.6.0",
     "@capacitor/cli": "^8.6.0",
     "@capacitor/core": "^8.6.0",
+    "@ducanh2912/next-pwa": "^10.2.9",
     "@google/genai": "^2.19.0",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.9.1",
