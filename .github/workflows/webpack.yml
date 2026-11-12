@@ -50,6 +50,11 @@ jobs:
         rm -rf android
         npx cap add android
 
+    - name: Copy Custom Android XML Configs
+      run: |
+        mkdir -p android/app/src/main/res/xml
+        cp -r android-assets/xml/* android/app/src/main/res/xml/ || true
+
     - name: Sync Capacitor Android
       run: npx cap sync android
 
