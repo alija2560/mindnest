@@ -6,14 +6,12 @@ const withPWA = withPWAInit({
   cacheOnFrontEndNav: true,
   aggressiveFrontEndNavCaching: true,
   reloadOnOnline: true,
-  disable: process.env.NODE_ENV === "development", // غیرفعال‌سازی در محیط لوکال برای راحتی در توسعه
+  disable: process.env.NODE_ENV === "development",
 });
 
 const nextConfig: NextConfig = {
-  // اضافه کردن این بخش برای رفع خطای تداخل کامپایلر در Next.js 16
   turbopack: {},
   typescript: {
-    // نادیده گرفتن کامل خطاهای تایپ‌سکریپت در زمان بیلد
     ignoreBuildErrors: true,
   },
   async headers() {
