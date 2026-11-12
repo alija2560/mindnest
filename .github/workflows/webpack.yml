@@ -38,12 +38,15 @@ jobs:
       run: npm install
 
     - name: Build Web Assets
-      run: npm run build --webpack
+      run: npm run build
 
     - name: Force Recreate Capacitor Android Platform
       run: |
         rm -rf android
         npx cap add android
+
+    - name: Generate Android App Icons
+      run: npx @capacitor/assets generate --android
 
     - name: Sync Capacitor Android
       run: npx cap sync android
