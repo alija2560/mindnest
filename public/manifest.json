@@ -1,7 +1,7 @@
 {
-  "name": "نوا | دستیار هوشمند",
-  "short_name": "نوا",
-  "description": "سیستم هوشمند مدیریت و گفتگو",
+  "name": "آشیانه ذهن | دستیار هوشمند",
+  "short_name": "آشیانه ذهن",
+  "description": "سیستم هوشمند  و گفتگو",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#06080d",
