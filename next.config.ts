@@ -10,6 +10,8 @@ const withPWA = withPWAInit({
 });
 
 const nextConfig: NextConfig = {
+  // اضافه کردن این بخش برای رفع خطای تداخل کامپایلر در Next.js 16
+  turbopack: {},
   typescript: {
     // نادیده گرفتن کامل خطاهای تایپ‌سکریپت در زمان بیلد
     ignoreBuildErrors: true,
