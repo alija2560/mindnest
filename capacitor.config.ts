@@ -2,10 +2,10 @@ import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'ir.mindnest.app',
-  appName: 'نوا',
-  webDir: 'public', // تنظیم روی پوشه public برای جلوگیری از خطای گم شدن پوشه out
+  appName: 'آشیانه ذهن',
+  webDir: 'public',
   server: {
-    url: 'https://mindnest.ir/', // اتصال مستقیم به سرور برای پشتیبانی از دیتابیس و SSR
+    url: 'https://mindnest.ir/', // اتصال مستقیم و پایدار به سرور اصلی برای بارگذاری کامل صفحه
     cleartext: true,
     allowNavigation: [
       'mindnest.ir',
@@ -14,7 +14,7 @@ const config: CapacitorConfig = {
   },
   android: {
     allowMixedContent: true,
-    backgroundColor: "#06080d"
+    backgroundColor: "#06080d" // همرنگ با تم تاریک اپلیکیشن شما برای جلوگیری از فلش صفحه سیاه
   }
 };
 
