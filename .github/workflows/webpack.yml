@@ -1,0 +1,63 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ "main", "master" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    
+    env:
+      http_proxy: ""
+      https_proxy: ""
+      all_proxy: ""
+
+    steps:
+    - name: Clear Proxy and Config Git
+      run: |
+        git config --global --unset http.proxy || true
+        git config --global --unset https.proxy || true
+
+    - name: Checkout Repository
+      uses: actions/checkout@v5
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v5
+      with:
+        node-version: '22'
+        cache: 'npm'
+
+    - name: Set up JDK 21
+      uses: actions/setup-java@v5
+      with:
+        distribution: 'temurin'
+        java-version: '21'
+
+    - name: Install Dependencies
+      run: npm install
+
+    - name: Build Web Assets
+      run: npm run build
+
+    - name: Force Recreate Capacitor Android Platform
+      run: |
+        rm -rf android
+        npx cap add android
+
+    - name: Sync Capacitor Android
+      run: npx cap sync android
+
+    - name: Grant execute permission for gradlew
+      run: cd android && chmod +x gradlew
+
+    - name: Build Debug APK
+      run: |
+        cd android
+        ./gradlew assembleDebug
+
+    - name: Upload APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-debug-apk
+        path: android/app/build/outputs/apk/debug/app-debug.apk
