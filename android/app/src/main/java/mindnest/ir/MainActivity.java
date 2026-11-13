@@ -1,12 +1,10 @@
 package ir.mindnest.app;
 
-import android.Manifest;
-import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.webkit.PermissionRequest;
 import android.webkit.WebChromeClient;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
 
 import com.getcapacitor.BridgeActivity;
 
@@ -15,20 +13,21 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // بررسی و درخواست مجوز میکروفون در زمان اجرا
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{
-                Manifest.permission.RECORD_AUDIO,
-                Manifest.permission.MODIFY_AUDIO_SETTINGS,
-                Manifest.permission.CAMERA
-            }, 100);
-        }
-
-        // فعال‌سازی دسترسی کامل WebView به میکروفون و دوربین وب‌سایت
+        // دسترسی کامل به WebView برای جلوگیری از صفحه سیاه و فعال‌سازی میکروفون
         if (this.bridge != null && this.bridge.getWebView() != null) {
-            this.bridge.getWebView().setWebChromeClient(new WebChromeClient() {
+            WebView webView = this.bridge.getWebView();
+            
+            // تنظیمات حیاتی برای رندر صحیح صفحه و جلوگیری از صفحه سیاه
+            WebSettings settings = webView.getSettings();
+            settings.setJavaScriptEnabled(true);
+            settings.setDomStorageEnabled(true);
+            settings.setDatabaseEnabled(true);
+            settings.setMediaPlaybackRequiresUserGesture(false);
+
+            webView.setWebChromeClient(new WebChromeClient() {
                 @Override
                 public void onPermissionRequest(PermissionRequest request) {
+                    // اعطای خودکار دسترسی میکروفون و دوربین به وب‌سایت
                     request.grant(request.getResources());
                 }
             });
