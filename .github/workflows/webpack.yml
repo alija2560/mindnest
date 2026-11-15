@@ -7,18 +7,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
-    
-    env:
-      http_proxy: ""
-      https_proxy: ""
-      all_proxy: ""
 
     steps:
-    - name: Clear Proxy and Config Git
-      run: |
-        git config --global --unset http.proxy || true
-        git config --global --unset https.proxy || true
-
     - name: Checkout Repository
       uses: actions/checkout@v5
 
@@ -50,10 +40,14 @@ jobs:
         rm -rf android
         npx cap add android
 
-    - name: Copy Custom Android XML Configs
+    - name: Copy Icons from public/icons to Android Res
       run: |
-        mkdir -p android/app/src/main/res/xml
-        cp -r android-assets/xml/* android/app/src/main/res/xml/ || true
+        # ساخت پوشه‌های مرجع ایمپکت اندروید و کپی کردن آیکون‌ها
+        mkdir -p android/app/src/main/res/mipmap-xxhdpi
+        if [ -f "public/icons/icon.png" ]; then
+          cp public/icons/icon.png android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png || true
+          cp public/icons/icon.png android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png || true
+        fi
 
     - name: Sync Capacitor Android
       run: npx cap sync android
