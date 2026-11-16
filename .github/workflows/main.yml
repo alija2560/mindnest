@@ -1,0 +1,59 @@
+name: Build iOS IPA
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-ios-ipa:
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v5
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v5
+      with:
+        node-version: '22'
+        cache: 'npm'
+
+    - name: Install Dependencies
+      run: npm install
+
+    - name: Build Web Assets
+      run: npm run build
+
+    - name: Sync Capacitor iOS
+      run: npx cap sync ios
+
+    - name: Install CocoaPods
+      run: |
+        cd ios/App
+        pod install
+
+    - name: Build iOS Archive (Unsigned for Sideloading)
+      run: |
+        cd ios/App
+        xcodebuild archive \
+          -workspace App.xcworkspace \
+          -scheme App \
+          -configuration Release \
+          -archivePath $PWD/build/App.xcarchive \
+          CODE_SIGN_IDENTITY="" \
+          CODE_SIGNING_REQUIRED=NO \
+          CODE_SIGNING_ALLOWED=NO
+
+    - name: Package .app into .ipa
+      run: |
+        cd ios/App
+        mkdir -p build/Payload
+        cp -r build/App.xcarchive/Products/Applications/App.app build/Payload/
+        cd build
+        zip -r MindNest.ipa Payload
+        ls -la
+
+    - name: Upload IPA Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: MindNest-iOS-IPA
+        path: ios/App/build/MindNest.ipa

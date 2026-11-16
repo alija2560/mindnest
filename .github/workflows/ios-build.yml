@@ -1,10 +1,10 @@
-name: Build iOS App
+name: Build iOS IPA
 
 on:
-  workflow_dispatch: # اجرای دستی برای جلوگیری از مصرف بی‌رویه دقایق رایگان مک
+  workflow_dispatch:
 
 jobs:
-  build-ios:
+  build-ios-ipa:
     runs-on: macos-latest
 
     steps:
@@ -23,20 +23,32 @@ jobs:
     - name: Build Web Assets
       run: npm run build
 
-    - name: Create Dummy Out Directory
-      run: |
-        mkdir -p out
-        echo '<!DOCTYPE html><html><head><title>MindNest</title></head><body></body></html>' > out/index.html
-
     - name: Sync Capacitor iOS
       run: npx cap sync ios
 
-    - name: Install CocoaPods Dependencies
+    - name: Build iOS Archive (Unsigned for Sideloading)
       run: |
         cd ios/App
-        pod install
+        xcodebuild archive \
+          -project App.xcodeproj \
+          -scheme App \
+          -configuration Release \
+          -archivePath $PWD/build/App.xcarchive \
+          CODE_SIGN_IDENTITY="" \
+          CODE_SIGNING_REQUIRED=NO \
+          CODE_SIGNING_ALLOWED=NO
 
-    - name: Build iOS App (Unsigned for Simulator/Testing)
+    - name: Package .app into .ipa
       run: |
         cd ios/App
-        xcodebuild -workspace App.xcworkspace -scheme App -configuration Debug -sdk iphonesimulator -derivedDataPath build
+        mkdir -p build/Payload
+        cp -r build/App.xcarchive/Products/Applications/App.app build/Payload/
+        cd build
+        zip -r MindNest.ipa Payload
+        ls -la
+
+    - name: Upload IPA Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: MindNest-iOS-IPA
+        path: ios/App/build/MindNest.ipa
